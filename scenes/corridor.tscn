@@ -5,28 +5,28 @@
 [ext_resource type="Material" path="res://assets/materials/corridor_ceiling.tres" id="3_corridor_ceiling"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_1"]
-size = Vector3(3.4, 0.2, 57.6)
+size = Vector3(12.6, 0.2, 77.6)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_2"]
-size = Vector3(3.4, 0.2, 57.6)
+size = Vector3(12.6, 0.2, 77.6)
 
 [sub_resource type="BoxMesh" id="BoxMesh_3"]
-size = Vector3(0.3, 3.8, 57.6)
+size = Vector3(0.3, 3.8, 77.6)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_4"]
-size = Vector3(0.3, 3.8, 57.6)
+size = Vector3(0.3, 3.8, 77.6)
 
 [sub_resource type="BoxMesh" id="BoxMesh_5"]
-size = Vector3(2.8, 3.6, 0.3)
+size = Vector3(12.0, 3.6, 0.3)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6"]
-size = Vector3(2.8, 3.6, 0.3)
+size = Vector3(12.0, 3.6, 0.3)
 
 [sub_resource type="BoxMesh" id="BoxMesh_7"]
-size = Vector3(0.75, 3.6, 0.3)
+size = Vector3(5.35, 3.6, 0.3)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_8"]
-size = Vector3(0.75, 3.6, 0.3)
+size = Vector3(5.35, 3.6, 0.3)
 
 [sub_resource type="BoxMesh" id="BoxMesh_9"]
 size = Vector3(1.3, 1.0, 0.3)
@@ -40,42 +40,42 @@ size = Vector3(1.3, 1.0, 0.3)
 collision_mask = 0
 
 [node name="Floor" type="MeshInstance3D" parent="Shell"]
-position = Vector3(0.0, -0.1, -26.5)
+position = Vector3(0.0, -0.1, -36.5)
 mesh = SubResource("BoxMesh_1")
 surface_material_override/0 = ExtResource("1_corridor_floor")
 
 [node name="FloorShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(0.0, -0.1, -26.5)
+position = Vector3(0.0, -0.1, -36.5)
 shape = SubResource("BoxShape3D_2")
 
 [node name="LeftWall" type="MeshInstance3D" parent="Shell"]
-position = Vector3(-1.55, 1.7, -26.5)
+position = Vector3(-6.15, 1.7, -36.5)
 mesh = SubResource("BoxMesh_3")
 surface_material_override/0 = ExtResource("2_corridor_wall")
 layers = 2
 
 [node name="LeftWallShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(-1.55, 1.7, -26.5)
+position = Vector3(-6.15, 1.7, -36.5)
 shape = SubResource("BoxShape3D_4")
 
 [node name="RightWall" type="MeshInstance3D" parent="Shell"]
-position = Vector3(1.55, 1.7, -26.5)
+position = Vector3(6.15, 1.7, -36.5)
 mesh = SubResource("BoxMesh_3")
 surface_material_override/0 = ExtResource("2_corridor_wall")
 layers = 2
 
 [node name="RightWallShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(1.55, 1.7, -26.5)
+position = Vector3(6.15, 1.7, -36.5)
 shape = SubResource("BoxShape3D_4")
 
 [node name="Ceiling" type="MeshInstance3D" parent="Shell"]
-position = Vector3(0.0, 3.3, -26.5)
+position = Vector3(0.0, 3.3, -36.5)
 mesh = SubResource("BoxMesh_1")
 surface_material_override/0 = ExtResource("3_corridor_ceiling")
 layers = 2
 
 [node name="CeilingShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(0.0, 3.3, -26.5)
+position = Vector3(0.0, 3.3, -36.5)
 shape = SubResource("BoxShape3D_2")
 
 [node name="StartWall" type="MeshInstance3D" parent="Shell"]
@@ -89,31 +89,31 @@ position = Vector3(0.0, 1.6, 2.15)
 shape = SubResource("BoxShape3D_6")
 
 [node name="EndWallLeft" type="MeshInstance3D" parent="Shell"]
-position = Vector3(-1.025, 1.6, -55.15)
+position = Vector3(-3.325, 1.6, -75.15)
 mesh = SubResource("BoxMesh_7")
 surface_material_override/0 = ExtResource("2_corridor_wall")
 layers = 2
 
 [node name="EndWallLeftShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(-1.025, 1.6, -55.15)
+position = Vector3(-3.325, 1.6, -75.15)
 shape = SubResource("BoxShape3D_8")
 
 [node name="EndWallRight" type="MeshInstance3D" parent="Shell"]
-position = Vector3(1.025, 1.6, -55.15)
+position = Vector3(3.325, 1.6, -75.15)
 mesh = SubResource("BoxMesh_7")
 surface_material_override/0 = ExtResource("2_corridor_wall")
 layers = 2
 
 [node name="EndWallRightShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(1.025, 1.6, -55.15)
+position = Vector3(3.325, 1.6, -75.15)
 shape = SubResource("BoxShape3D_8")
 
 [node name="EndWallTop" type="MeshInstance3D" parent="Shell"]
-position = Vector3(0.0, 2.9, -55.15)
+position = Vector3(0.0, 2.9, -75.15)
 mesh = SubResource("BoxMesh_9")
 surface_material_override/0 = ExtResource("2_corridor_wall")
 layers = 2
 
 [node name="EndWallTopShape" type="CollisionShape3D" parent="Shell"]
-position = Vector3(0.0, 2.9, -55.15)
+position = Vector3(0.0, 2.9, -75.15)
 shape = SubResource("BoxShape3D_10")

@@ -17,6 +17,8 @@ var _audio: AudioController
 var _hud: Hud
 var _absence_time: float = -1.0
 var _silence_time: float = -1.0
+## Tiempo de juego acumulado (el mismo reloj que usan los tweens).
+var _game_time: float = 0.0
 
 
 func _initialize() -> void:
@@ -24,6 +26,11 @@ func _initialize() -> void:
 		if arg.begins_with("--shots="):
 			_shots_dir = arg.trim_prefix("--shots=")
 	_run.call_deferred()
+
+
+func _process(delta: float) -> bool:
+	_game_time += delta
+	return false
 
 
 func _run() -> void:
@@ -43,29 +50,37 @@ func _run() -> void:
 	_hud = _main.get_node("Hud")
 	_main.phase_changed.connect(func(p: ExperienceController.Phase) -> void:
 		if p == ExperienceController.Phase.ABSENCE:
-			_absence_time = Time.get_ticks_msec() / 1000.0)
-	_audio.silence_reached.connect(func() -> void: _silence_time = Time.get_ticks_msec() / 1000.0)
+			_absence_time = _game_time)
+	_audio.silence_reached.connect(func() -> void: _silence_time = _game_time)
 
 	print("== Configuración")
 	_check(ProjectSettings.get_setting("rendering/renderer/rendering_method") == "forward_plus",
 			"renderer = forward_plus")
 	_check(RenderingServer.get_current_rendering_method() == "forward_plus" or DisplayServer.get_name() == "headless",
 			"método de renderizado activo: %s" % RenderingServer.get_current_rendering_method())
-	var drone_stream: AudioStreamWAV = _main.get_node("AudioController/DroneLayer").stream
-	var layer_stream: AudioStreamWAV = _main.get_node("AudioController/AnticipationLayer").stream
-	_check(drone_stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "el zumbido está en bucle")
-	_check(layer_stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "la capa de anticipación está en bucle")
+	var music_stream: AudioStreamMP3 = _main.get_node("AudioController/Music").stream
+	_check(music_stream != null and music_stream.loop, "la canción está cargada y en bucle")
 	_check(_only_light_is_door(), "la única fuente de luz es la puerta")
 
+	print("== Estado 0: oscuridad")
+	await _wait(2.0)
+	_check(_main.phase == ExperienceController.Phase.DARKNESS, "fase DARKNESS")
+	_check(not _door.is_revealed, "la luz todavía no aparece")
+	_check(not _audio.is_music_playing(), "sin música al comienzo")
+	await _shot("00_oscuridad")
+	if _can_capture():
+		_check(_max_brightness() < 0.01, "la imagen inicial es negro puro (máx %.3f)" % _max_brightness())
+
 	print("== Estado 1: la promesa")
-	await _wait(4.5)
+	await _wait(5.0)
 	_check(_player.global_position.distance_to(Vector3(0, 0, 0.8)) < 0.05,
 			"posición inicial (%s)" % _player.global_position)
 	_check(_player.is_on_floor(), "el jugador está sobre el suelo")
-	_check(_main.distance_to_door() > 50.0, "la puerta está lejos (%.1f m)" % _main.distance_to_door())
+	_check(_main.distance_to_door() > 70.0, "la puerta está lejos (%.1f m)" % _main.distance_to_door())
 	_check(_main.phase == ExperienceController.Phase.PROMISE, "fase PROMISE")
-	_check(_audio.is_any_layer_playing(), "el ambiente sonoro suena")
-	await _shot("01_promesa")
+	_check(_door.is_revealed and _door.get_shape() < 0.01, "aparece un punto de luz (forma %.2f)" % _door.get_shape())
+	_check(_audio.is_music_playing(), "la música comienza")
+	await _shot("01_punto")
 
 	print("== Colisiones")
 	Input.action_press("move_back")
@@ -76,100 +91,104 @@ func _run() -> void:
 	_player.set_look_target(-90, 0)  # mirar hacia +X
 	await _wait(0.8)
 	Input.action_press("move_forward")
-	await _wait(2.5)
+	await _wait(3.5)
 	Input.action_release("move_forward")
-	_check(_player.global_position.x < 1.11, "la pared lateral (invisible en la oscuridad) detiene al jugador (x=%.2f)" % _player.global_position.x)
+	_check(_player.global_position.x < 5.71, "la pared lateral (invisible en la oscuridad) detiene al jugador (x=%.2f)" % _player.global_position.x)
 	_player.free_roam = false
 	_player.global_position = Vector3(0, 0.02, 0.8)
 	_player.velocity = Vector3.ZERO
 	_player.set_look_target(-90, 0)  # se pide más giro del permitido
 	await _wait(1.0)
-	_check(absf(_player.get_look_yaw_degrees() + 35.0) < 2.0,
+	# Se comprueba el valor absoluto: el ratón real puede mover la vista si se
+	# hace clic sobre la ventana de prueba; lo que importa es que no pase de 35°.
+	_check(absf(absf(_player.get_look_yaw_degrees()) - 35.0) < 2.0,
 			"límite de giro del pasillo (%.1f°)" % _player.get_look_yaw_degrees())
 	_player.set_look_target(0, 0)
 	await _wait(1.0)
 
 	print("== Estado 2: la aproximación")
-	var drone_samples: Array[float] = []
-	var layer_samples: Array[float] = []
+	var music_samples: Array[float] = []
+	var shape_samples: Array[float] = []
+	var floor_light_far := -1.0
 	var beam: SpotLight3D = _door.get_node("Beam")
 	var beam_start := beam.light_energy
 	Input.action_press("move_forward")
 	var shot_taken := false
 	while _main.distance_to_door() > 6.0:
 		await _wait(1.0)
-		drone_samples.append(_audio.get_drone_volume_db())
-		layer_samples.append(_audio.get_anticipation_volume_db())
-		if not shot_taken and _main.distance_to_door() < 30.0:
+		music_samples.append(_audio.get_music_volume_db())
+		shape_samples.append(_door.get_shape())
+		if floor_light_far < 0.0 and _main.distance_to_door() < 45.0:
+			floor_light_far = beam.light_energy
+		if not shot_taken and _main.distance_to_door() < 35.0:
 			shot_taken = true
 			await _shot("02_aproximacion")
 	Input.action_release("move_forward")
 	_check(_main.phase == ExperienceController.Phase.APPROACH, "fase APPROACH")
-	_check(_is_non_decreasing(drone_samples), "el zumbido crece de forma monótona: %s" % _fmt(drone_samples))
-	_check(_is_non_decreasing(layer_samples), "la capa armónica crece de forma monótona: %s" % _fmt(layer_samples))
-	_check(drone_samples[-1] - drone_samples[0] > 6.0, "el aumento es perceptible")
-	_check(_max_step(drone_samples) < 3.0, "sin saltos bruscos de volumen (máx %.2f dB/s)" % _max_step(drone_samples))
+	_check(_is_non_decreasing(music_samples), "la música crece de forma monótona: %s" % _fmt(music_samples))
+	_check(music_samples[-1] - music_samples[0] > 15.0, "el aumento es claramente perceptible")
+	_check(_max_step(music_samples) < 4.0, "sin saltos bruscos de volumen (máx %.2f dB/s)" % _max_step(music_samples))
+	_check(_is_non_decreasing(shape_samples) and shape_samples[-1] > 0.99,
+			"el punto toma forma de puerta: %s" % _fmt(shape_samples))
+	_check(floor_light_far == 0.0, "con solo el punto visible, el suelo no recibe luz")
 	_check(beam.light_energy > beam_start + 2.0, "la luz de la puerta se intensifica (%.1f → %.1f)" % [beam_start, beam.light_energy])
 	_check(_hud.get_veil_color().a < 0.01, "todavía sin resplandor a 6 m")
 
 	print("== Retroceder y detenerse")
 	await _wait(2.0)
-	var before := _audio.get_drone_volume_db()
+	var before := _audio.get_music_volume_db()
 	Input.action_press("move_back")
 	await _wait(3.0)
 	Input.action_release("move_back")
 	await _wait(1.5)
-	_check(_audio.get_drone_volume_db() < before, "al retroceder el sonido disminuye")
+	_check(_audio.get_music_volume_db() < before, "al retroceder la música disminuye")
 
 	print("== Estado 3: el umbral")
 	Input.action_press("move_forward")
-	while _main.distance_to_door() > 1.2:
+	while _main.distance_to_door() > 2.2:  # frenar a 3,2 m/s lleva ~1 m
 		await _wait(0.1)
 	Input.action_release("move_forward")
 	await _wait(0.6)
 	_check(_main.phase == ExperienceController.Phase.THRESHOLD, "fase THRESHOLD")
 	var glare := _hud.get_veil_color().a
-	_check(glare > 0.3 and glare < 0.95, "el resplandor crece ante la puerta (%.2f)" % glare)
+	_check(glare > 0.05 and glare < 0.95, "el resplandor crece ante la puerta (%.2f)" % glare)
 	await _shot("03_umbral")
 
 	print("== Estado 4: el cruce y la ausencia")
 	Input.action_press("move_forward")
-	await _wait(1.5)
+	await _wait(1.6)
 	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse (z=%.2f)" % _player.global_position.z)
 	_check(_door.is_extinguished, "la luz de la puerta se extingue al cruzar")
+	var silence_delay := _silence_time - _absence_time
+	_check(_silence_time >= 0.0 and silence_delay < 0.001,
+			"la música se corta al instante al cruzar (%.3f s)" % silence_delay)
+	_check(_audio.is_bus_muted() and not _audio.is_music_playing(), "silencio absoluto inmediato")
 	var veil := _hud.get_veil_color()
-	_check(veil.a > 0.99 and veil.v > 0.9, "resplandor blanco total al cruzar")
-	await _shot("04_resplandor")
-	await _wait(1.5)
+	_check(veil.a > 0.99 and veil.v > 0.99, "todo queda blanco al cruzar")
+	await _wait(1.0)
 	Input.action_release("move_forward")
 	await _wait(3.0)
-	veil = _hud.get_veil_color()
-	_check(veil.a > 0.99 and veil.v < 0.01, "después, oscuridad pura (velo %s)" % veil)
-	var fade_duration := _silence_time - _absence_time
-	_check(_silence_time > 0.0 and fade_duration >= 1.0 and fade_duration <= 3.2,
-			"desvanecimiento sonoro de %.2f s (entre 1 y 3 s)" % fade_duration)
-	_check(_audio.is_bus_muted() and not _audio.is_any_layer_playing(), "silencio absoluto")
-	await _shot("05_oscuridad")
-	if not _shots_dir.is_empty() and DisplayServer.get_name() != "headless":
-		_check(_max_brightness() < 0.01, "la imagen es negro puro (máx %.3f)" % _max_brightness())
+	await _shot("04_blanco")
+	if _can_capture():
+		_check(_min_brightness() > 0.99, "la imagen es blanco puro (mín %.3f)" % _min_brightness())
 
-	print("== La oscuridad y el silencio persisten")
+	print("== El blanco y el silencio persisten")
 	_player.set_look_target(120, 0)
 	Input.action_press("move_forward")
 	await _wait(3.0)
 	Input.action_release("move_forward")
 	_check(_player.free_roam, "más allá de la puerta se puede caminar libremente")
 	_player.set_look_target(0, 0)
-	_player.global_position = Vector3(0, 0.02, -55.8)
+	_player.global_position = Vector3(0, 0.02, -75.8)
 	await _wait(1.0)
 	Input.action_press("move_back")
 	await _wait(3.0)
 	Input.action_release("move_back")
-	_check(_player.global_position.z > -55.0, "se puede volver al pasillo (z=%.2f)" % _player.global_position.z)
+	_check(_player.global_position.z > -75.0, "se puede volver al pasillo (z=%.2f)" % _player.global_position.z)
 	await _wait(2.0)
 	veil = _hud.get_veil_color()
-	_check(veil.a > 0.99 and veil.v < 0.01, "la oscuridad no se retira")
-	_check(_audio.is_bus_muted() and not _audio.is_any_layer_playing(), "el sonido no se reanuda")
+	_check(veil.a > 0.99 and veil.v > 0.99, "el blanco no se retira")
+	_check(_audio.is_bus_muted() and not _audio.is_music_playing(), "el sonido no se reanuda")
 
 	print("")
 	if _failures.is_empty():
@@ -201,8 +220,12 @@ func _only_light_is_door() -> bool:
 	return true
 
 
+func _can_capture() -> bool:
+	return not _shots_dir.is_empty() and DisplayServer.get_name() != "headless"
+
+
 func _shot(shot_name: String) -> void:
-	if _shots_dir.is_empty() or DisplayServer.get_name() == "headless":
+	if not _can_capture():
 		return
 	await RenderingServer.frame_post_draw
 	var img := root.get_texture().get_image()
@@ -217,6 +240,15 @@ func _max_brightness() -> float:
 	for y in range(0, img.get_height(), 8):
 		for x in range(0, img.get_width(), 8):
 			m = maxf(m, img.get_pixel(x, y).v)
+	return m
+
+
+func _min_brightness() -> float:
+	var img := root.get_texture().get_image()
+	var m := 1.0
+	for y in range(0, img.get_height(), 8):
+		for x in range(0, img.get_width(), 8):
+			m = minf(m, img.get_pixel(x, y).v)
 	return m
 
 

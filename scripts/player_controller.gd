@@ -7,9 +7,9 @@ extends CharacterBody3D
 ## hacia donde se mira, con un giro más amplio para reconocer el espacio.
 
 @export_group("Movimiento")
-@export var walk_speed: float = 1.6
-@export var acceleration: float = 2.2
-@export var deceleration: float = 3.4
+@export var walk_speed: float = 3.2
+@export var acceleration: float = 3.5
+@export var deceleration: float = 5.0
 ## Dirección del recorrido en el pasillo (el pasillo avanza hacia -Z).
 @export var path_direction: Vector3 = Vector3.FORWARD
 
