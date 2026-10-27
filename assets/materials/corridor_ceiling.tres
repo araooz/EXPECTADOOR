@@ -1,11 +1,5 @@
-[gd_resource type="StandardMaterial3D" format=3]
-
-[ext_resource type="Texture2D" path="res://assets/materials/surface_noise.tres" id="1_noise"]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://bxq0c1l7p2aqm"]
 
 [resource]
 resource_name = "corridor_ceiling"
-albedo_color = Color(0.13, 0.14, 0.16, 1)
-albedo_texture = ExtResource("1_noise")
-roughness = 0.95
-uv1_scale = Vector3(0.35, 0.35, 0.35)
-uv1_triplanar = true
+albedo_color = Color(0.02, 0.02, 0.02, 1)

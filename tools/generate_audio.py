@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Genera los recursos sonoros de EXPECTADOOR usando solo la biblioteca estándar.
 
-Produce tres archivos WAV mono de 16 bits en assets/audio/:
+Produce dos archivos WAV mono de 16 bits en assets/audio/:
 
   ambient_drone.wav       Textura grave, en bucle sin costuras (32 s).
   anticipation_layer.wav  Capa armónica suspendida que crece con la cercanía (32 s, bucle).
-  door_open.wav           Chasquido de picaporte y desplazamiento de aire (3.5 s).
 
 Los bucles se marcan con un bloque 'smpl', que el importador WAV de Godot
 detecta automáticamente (modo de bucle "Detect From WAV").
@@ -134,44 +133,12 @@ def anticipation_layer(rng):
     return normalize(out, 0.6)
 
 
-def door_open(rng):
-    duration = 3.5
-    n = int(SAMPLE_RATE * duration)
-    out = [0.0] * n
-
-    def click(start_s, gain):
-        start = int(start_s * SAMPLE_RATE)
-        for i in range(int(0.06 * SAMPLE_RATE)):
-            t = i / SAMPLE_RATE
-            env = math.exp(-t / 0.008)
-            ring = math.exp(-t / 0.025) * (math.sin(TAU * 1730 * t) + 0.6 * math.sin(TAU * 2940 * t))
-            out[start + i] += gain * (env * rng.uniform(-1, 1) * 0.6 + ring * 0.4)
-
-    click(0.05, 0.55)   # picaporte
-    click(0.16, 0.30)   # pestillo liberado
-
-    air = [rng.uniform(-1, 1) for _ in range(n)]
-    air = one_pole_lowpass(one_pole_lowpass(air, 420.0), 420.0)
-    for i in range(n):
-        t = i / SAMPLE_RATE
-        if t < 0.3:
-            continue
-        x = (t - 0.3) / (duration - 0.3)
-        env = math.sin(math.pi * min(1.0, x)) ** 2 * (1.0 - x) ** 0.5
-        out[i] += 3.2 * air[i] * env
-    fade = int(0.2 * SAMPLE_RATE)
-    for i in range(fade):
-        out[n - 1 - i] *= i / fade
-    return normalize(out, 0.5)
-
-
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     rng = random.Random(1979)
     print("Generando audio de EXPECTADOOR en", os.path.normpath(OUT_DIR))
     write_wav("ambient_drone.wav", ambient_drone(rng), loop=True)
     write_wav("anticipation_layer.wav", anticipation_layer(rng), loop=True)
-    write_wav("door_open.wav", door_open(rng))
 
 
 if __name__ == "__main__":

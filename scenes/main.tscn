@@ -1,21 +1,20 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://jtw8pvthplts"]
 
-[ext_resource type="Script" path="res://scripts/experience_controller.gd" id="1_experience_controller"]
-[ext_resource type="Script" path="res://scripts/audio_controller.gd" id="2_audio_controller"]
+[ext_resource type="Script" uid="uid://b6g6mvsxwe768" path="res://scripts/experience_controller.gd" id="1_experience_controller"]
+[ext_resource type="Script" uid="uid://1gjrsfkacj3o" path="res://scripts/audio_controller.gd" id="2_audio_controller"]
 [ext_resource type="PackedScene" path="res://scenes/corridor.tscn" id="3_corridor"]
 [ext_resource type="PackedScene" path="res://scenes/door.tscn" id="4_door"]
 [ext_resource type="PackedScene" path="res://scenes/final_room.tscn" id="5_final_room"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="6_player"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="7_hud"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambient_drone.wav" id="8_ambient_drone"]
-[ext_resource type="AudioStream" path="res://assets/audio/anticipation_layer.wav" id="9_anticipation_layer"]
+[ext_resource type="AudioStream" uid="uid://wibh53g3ku6o" path="res://assets/audio/ambient_drone.wav" id="8_ambient_drone"]
+[ext_resource type="AudioStream" uid="uid://7xkhsrih0te7" path="res://assets/audio/anticipation_layer.wav" id="9_anticipation_layer"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
-background_color = Color(0.008, 0.01, 0.014, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.42, 0.47, 0.56, 1)
-ambient_light_energy = 0.3
+ambient_light_energy = 0.0
+reflected_light_source = 1
 tonemap_mode = 3
 tonemap_exposure = 1.05
 tonemap_white = 6.0
@@ -26,10 +25,15 @@ ssr_fade_out = 2.5
 ssao_enabled = true
 ssao_radius = 1.2
 ssao_intensity = 1.6
+ssil_enabled = true
+ssil_intensity = 0.6
 glow_enabled = true
-glow_intensity = 0.55
-glow_bloom = 0.04
-glow_hdr_threshold = 1.1
+glow_levels/2 = 0.0
+glow_levels/3 = 0.5
+glow_levels/4 = 0.7
+glow_levels/5 = 0.5
+glow_normalized = true
+glow_intensity = 0.45
 volumetric_fog_enabled = true
 volumetric_fog_density = 0.018
 volumetric_fog_albedo = Color(0.82, 0.86, 0.95, 1)
@@ -38,34 +42,33 @@ volumetric_fog_ambient_inject = 0.15
 adjustment_enabled = true
 adjustment_saturation = 0.9
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=921575828]
 script = ExtResource("1_experience_controller")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=19253156]
 environment = SubResource("Environment_1")
 
-[node name="Corridor" parent="." instance=ExtResource("3_corridor")]
+[node name="Corridor" parent="." unique_id=803769416 instance=ExtResource("3_corridor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.30396494)
 
-[node name="Door" parent="." instance=ExtResource("4_door")]
-position = Vector3(0.0, 0.0, -30.0)
+[node name="Door" parent="." unique_id=1468295698 instance=ExtResource("4_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -55)
 
-[node name="FinalRoom" parent="." instance=ExtResource("5_final_room")]
-position = Vector3(0.0, 0.0, -30.0)
+[node name="FinalRoom" parent="." unique_id=417773884 instance=ExtResource("5_final_room")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -55)
 
-[node name="Player" parent="." instance=ExtResource("6_player")]
-position = Vector3(0.0, 0.02, 0.8)
+[node name="Player" parent="." unique_id=457008244 instance=ExtResource("6_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0.8)
 
-[node name="AudioController" type="Node" parent="."]
+[node name="AudioController" type="Node" parent="." unique_id=23671765]
 script = ExtResource("2_audio_controller")
 
-[node name="DroneLayer" type="AudioStreamPlayer" parent="AudioController"]
+[node name="DroneLayer" type="AudioStreamPlayer" parent="AudioController" unique_id=111136654]
 stream = ExtResource("8_ambient_drone")
 volume_db = -80.0
-bus = &"Ambience"
 
-[node name="AnticipationLayer" type="AudioStreamPlayer" parent="AudioController"]
+[node name="AnticipationLayer" type="AudioStreamPlayer" parent="AudioController" unique_id=398012842]
 stream = ExtResource("9_anticipation_layer")
 volume_db = -80.0
-bus = &"Ambience"
 
-[node name="Hud" parent="." instance=ExtResource("7_hud")]
+[node name="Hud" parent="." unique_id=775338837 instance=ExtResource("7_hud")]

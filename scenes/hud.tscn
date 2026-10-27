@@ -5,9 +5,6 @@
 [sub_resource type="LabelSettings" id="LabelSettings_1"]
 font_size = 15
 font_color = Color(0.86, 0.88, 0.92, 1)
-shadow_size = 8
-shadow_color = Color(0, 0, 0, 0.55)
-shadow_offset = Vector2(0, 0)
 
 [node name="Hud" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -26,22 +23,13 @@ label_settings = SubResource("LabelSettings_1")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="InteractHint" type="Label" parent="."]
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -60.0
-offset_top = 70.0
-offset_right = 60.0
-offset_bottom = 98.0
+[node name="Veil" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-text = "E"
-label_settings = SubResource("LabelSettings_1")
-horizontal_alignment = 1
-vertical_alignment = 1
+color = Color(1, 1, 1, 0)
 
 [node name="Fade" type="ColorRect" parent="."]
 anchor_right = 1.0

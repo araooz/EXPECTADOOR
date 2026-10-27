@@ -3,10 +3,10 @@ extends Node3D
 ## Coordina las cuatro fases de la obra y comunica a los componentes cuánto se
 ## ha acercado el espectador a la puerta.
 ##
-##   PROMISE    El espectador aparece; la puerta iluminada espera al fondo.
+##   PROMISE    El espectador aparece; la puerta blanca brilla, lejana, en la oscuridad.
 ##   APPROACH   Avanza a su ritmo; luz y sonido crecen con la cercanía.
-##   THRESHOLD  Abre la puerta.
-##   ABSENCE    Entra en la habitación vacía; el sonido se apaga para siempre.
+##   THRESHOLD  Ante el vano, la luz empieza a llenar la mirada.
+##   ABSENCE    Cruza: resplandor blanco, después oscuridad pura y silencio.
 
 enum Phase { PROMISE, APPROACH, THRESHOLD, ABSENCE }
 
@@ -20,6 +20,10 @@ signal phase_changed(phase: Phase)
 @export var arrival_distance: float = 1.5
 ## Velocidad con la que luz y sonido siguen a la posición (más bajo = más lento).
 @export var anticipation_response: float = 1.2
+## Distancia a la puerta a partir de la cual la luz empieza a cubrir la pantalla.
+@export var glare_distance: float = 3.5
+## Opacidad máxima del resplandor justo antes de cruzar.
+@export var glare_max_before_crossing: float = 0.85
 
 var phase: Phase = Phase.PROMISE
 var anticipation: float = 0.0
@@ -38,10 +42,8 @@ func _ready() -> void:
 	_start_position = _player.global_position
 	_path_length = maxf(distance_to_door(), arrival_distance + 0.01)
 
-	_door.interaction_available_changed.connect(_hud.set_interaction_hint_visible)
-	_door.opening_started.connect(_on_door_opening_started)
-	_final_room.player_entered.connect(_on_player_entered_room)
-	_final_room.player_exited.connect(_on_player_exited_room)
+	_final_room.player_entered.connect(_on_player_crossed)
+	_final_room.player_exited.connect(_on_player_exited_beyond)
 
 	_audio.start()
 
@@ -53,10 +55,17 @@ func _process(delta: float) -> void:
 	if travelled >= intro_hint_dismiss_distance:
 		_hud.dismiss_intro_hint()
 
-	var target := clampf(inverse_lerp(_path_length, arrival_distance, distance_to_door()), 0.0, 1.0)
+	var distance := distance_to_door()
+	if phase == Phase.APPROACH and distance <= glare_distance:
+		_set_phase(Phase.THRESHOLD)
+
+	var target := clampf(inverse_lerp(_path_length, arrival_distance, distance), 0.0, 1.0)
 	anticipation = lerpf(anticipation, target, 1.0 - exp(-anticipation_response * delta))
 	_door.set_anticipation(anticipation)
 	_audio.set_anticipation(anticipation)
+
+	var glare := clampf(1.0 - distance / glare_distance, 0.0, 1.0)
+	_hud.set_glare(glare * glare * glare_max_before_crossing)
 
 
 ## Distancia del espectador a la puerta medida sobre el eje del recorrido.
@@ -64,19 +73,16 @@ func distance_to_door() -> float:
 	return maxf((_door.global_position - _player.global_position).dot(_player.path_direction), 0.0)
 
 
-func _on_door_opening_started() -> void:
-	_hud.dismiss_intro_hint()
-	_set_phase(Phase.THRESHOLD)
-
-
-func _on_player_entered_room(_player_body: Node3D) -> void:
+func _on_player_crossed(_player_body: Node3D) -> void:
 	_player.free_roam = true
 	if phase != Phase.ABSENCE:
 		_set_phase(Phase.ABSENCE)
+		_hud.play_crossing()
+		_door.extinguish()
 		_audio.fade_to_silence()
 
 
-func _on_player_exited_room(_player_body: Node3D) -> void:
+func _on_player_exited_beyond(_player_body: Node3D) -> void:
 	_player.free_roam = false
 
 
