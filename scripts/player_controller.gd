@@ -2,9 +2,9 @@ class_name PlayerController
 extends CharacterBody3D
 ## Controlador en primera persona para un recorrido guiado.
 ##
-## En el pasillo el desplazamiento sigue el eje del recorrido y la mirada tiene
-## un giro limitado. En la habitación final (modo [member free_roam]) se camina
-## hacia donde se mira, con un giro más amplio para reconocer el espacio.
+## La mirada puede girar libremente en cualquier dirección. En el pasillo el
+## desplazamiento sigue el eje del recorrido; en la habitación final (modo
+## [member free_roam]) se camina hacia donde se mira.
 
 @export_group("Movimiento")
 @export var walk_speed: float = 3.2
@@ -16,10 +16,8 @@ extends CharacterBody3D
 @export_group("Mirada")
 @export var mouse_sensitivity: float = 0.0022
 @export var look_smoothing: float = 12.0
-@export var corridor_yaw_limit_degrees: float = 35.0
-@export var corridor_pitch_limit_degrees: float = 20.0
-@export var room_yaw_limit_degrees: float = 140.0
-@export var room_pitch_limit_degrees: float = 40.0
+## Límite vertical de la mirada (por debajo de 90° para que la vista no se invierta).
+@export var pitch_limit_degrees: float = 89.0
 
 ## Si es verdadero, se camina en la dirección de la mirada (habitación final).
 var free_roam: bool = false
@@ -54,9 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	var yaw_limit := deg_to_rad(room_yaw_limit_degrees if free_roam else corridor_yaw_limit_degrees)
-	var pitch_limit := deg_to_rad(room_pitch_limit_degrees if free_roam else corridor_pitch_limit_degrees)
-	_target_yaw = clampf(_target_yaw, -yaw_limit, yaw_limit)
+	var pitch_limit := deg_to_rad(pitch_limit_degrees)
 	_target_pitch = clampf(_target_pitch, -pitch_limit, pitch_limit)
 
 	var weight := 1.0 - exp(-look_smoothing * delta)
@@ -89,7 +85,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
-## Fija el objetivo de la mirada en grados (se respetan los límites vigentes).
+## Fija el objetivo de la mirada en grados (se respeta el límite vertical).
 func set_look_target(yaw_degrees: float, pitch_degrees: float) -> void:
 	_target_yaw = deg_to_rad(yaw_degrees)
 	_target_pitch = deg_to_rad(pitch_degrees)

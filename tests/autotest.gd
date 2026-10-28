@@ -97,12 +97,10 @@ func _run() -> void:
 	_player.free_roam = false
 	_player.global_position = Vector3(0, 0.02, 0.8)
 	_player.velocity = Vector3.ZERO
-	_player.set_look_target(-90, 0)  # se pide más giro del permitido
+	_player.set_look_target(-180, 0)  # mirar hacia atrás, sin límite de giro
 	await _wait(1.0)
-	# Se comprueba el valor absoluto: el ratón real puede mover la vista si se
-	# hace clic sobre la ventana de prueba; lo que importa es que no pase de 35°.
-	_check(absf(absf(_player.get_look_yaw_degrees()) - 35.0) < 2.0,
-			"límite de giro del pasillo (%.1f°)" % _player.get_look_yaw_degrees())
+	_check(absf(_player.get_look_yaw_degrees() + 180.0) < 5.0,
+			"la mirada gira libremente en el pasillo (%.1f°)" % _player.get_look_yaw_degrees())
 	_player.set_look_target(0, 0)
 	await _wait(1.0)
 

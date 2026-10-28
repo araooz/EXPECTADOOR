@@ -94,7 +94,7 @@ Desde la terminal: `godot --path .` (o `godot -e --path .` para abrir el editor)
 |---|---|
 | `W` / `↑` | Avanzar |
 | `S` / `↓` | Retroceder |
-| Ratón | Mirar (giro limitado) |
+| Ratón | Mirar en cualquier dirección |
 | `Esc` | Liberar o volver a capturar el cursor (no cierra la aplicación) |
 | Clic | Volver a capturar el cursor |
 
@@ -187,7 +187,7 @@ superadas, con ventana y en headless.**
 - A los 4 s aparece el punto (forma 0,00) y empieza la música. Posición inicial
   correcta, a 75,8 m de la puerta.
 - Colisiones: el muro del inicio y las paredes laterales (a ±6 m) detienen al jugador.
-  El giro está limitado a 35°.
+  La mirada gira libremente (vertical limitada a ±89°).
 - La música crece de forma monótona de −29,9 a −5,1 dB, con un cambio máximo de
   1,6 dB/s. Al retroceder, disminuye.
 - El punto toma forma de puerta de manera progresiva (0 → 1). Mientras solo se ve el
