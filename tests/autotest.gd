@@ -16,7 +16,7 @@ var _door: DoorController
 var _audio: AudioController
 var _hud: Hud
 var _absence_time: float = -1.0
-var _silence_time: float = -1.0
+var _music_finished: bool = false
 ## Tiempo de juego acumulado (el mismo reloj que usan los tweens).
 var _game_time: float = 0.0
 
@@ -51,7 +51,7 @@ func _run() -> void:
 	_main.phase_changed.connect(func(p: ExperienceController.Phase) -> void:
 		if p == ExperienceController.Phase.ABSENCE:
 			_absence_time = _game_time)
-	_audio.silence_reached.connect(func() -> void: _silence_time = _game_time)
+	_audio.music_finished.connect(func() -> void: _music_finished = true)
 
 	print("== Configuración")
 	_check(ProjectSettings.get_setting("rendering/renderer/rendering_method") == "forward_plus",
@@ -59,7 +59,10 @@ func _run() -> void:
 	_check(RenderingServer.get_current_rendering_method() == "forward_plus" or DisplayServer.get_name() == "headless",
 			"método de renderizado activo: %s" % RenderingServer.get_current_rendering_method())
 	var music_stream: AudioStreamMP3 = _main.get_node("AudioController/Music").stream
-	_check(music_stream != null and music_stream.loop, "la canción está cargada y en bucle")
+	_check(music_stream != null, "la canción está cargada")
+	_check(is_equal_approx(_audio.get_bar_length(), 2.5), "a 96 BPM un compás dura 2,5 s")
+	_check(is_equal_approx(_audio.get_approach_loop_end(), 102.5),
+			"el bucle previo al cruce termina en el compás anterior a 1:43 (%.1f s)" % _audio.get_approach_loop_end())
 	_check(_only_light_is_door(), "la única fuente de luz es la puerta")
 
 	print("== Estado 0: oscuridad")
@@ -141,6 +144,14 @@ func _run() -> void:
 	await _wait(1.5)
 	_check(_audio.get_music_volume_db() < before, "al retroceder la música disminuye")
 
+	print("== Bucle cuantizado")
+	_check(_audio.get_music_position() < _audio.get_approach_loop_end(),
+			"antes de cruzar, la canción no llega a 1:43 (%.1f s)" % _audio.get_music_position())
+	_audio._music.seek(_audio.get_approach_loop_end() - 0.5)
+	await _wait(1.0)
+	_check(_audio.is_music_playing() and _audio.get_music_position() < 2.0,
+			"al llegar al fin del compás vuelve al inicio (%.1f s)" % _audio.get_music_position())
+
 	print("== Estado 3: el umbral")
 	Input.action_press("move_forward")
 	while _main.distance_to_door() > 2.2:  # frenar a 3,2 m/s lleva ~1 m
@@ -157,10 +168,12 @@ func _run() -> void:
 	await _wait(1.6)
 	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse (z=%.2f)" % _player.global_position.z)
 	_check(_door.is_extinguished, "la luz de la puerta se extingue al cruzar")
-	var silence_delay := _silence_time - _absence_time
-	_check(_silence_time >= 0.0 and silence_delay < 0.001,
-			"la música se corta al instante al cruzar (%.3f s)" % silence_delay)
-	_check(_audio.is_bus_muted() and not _audio.is_music_playing(), "silencio absoluto inmediato")
+	var cue_position := _audio.get_music_position()
+	var crossing_elapsed := _game_time - _absence_time
+	_check(_audio.is_music_playing() and cue_position >= 103.0 and cue_position <= 103.0 + crossing_elapsed + 0.2,
+			"al cruzar suena el minuto 1:43 (%.1f s, %.1f s después del cruce)" % [cue_position, crossing_elapsed])
+	_check(absf(_audio.get_music_volume_db() - (-2.0)) < 0.1, "el fragmento del cruce suena a plena intensidad (%.1f dB)" % _audio.get_music_volume_db())
+	_check(_audio.get_lowpass_cutoff_hz() > 19000.0, "y sin filtro (%.0f Hz)" % _audio.get_lowpass_cutoff_hz())
 	var veil := _hud.get_veil_color()
 	_check(veil.a > 0.99 and veil.v > 0.99, "todo queda blanco al cruzar")
 	await _wait(1.0)
@@ -169,6 +182,16 @@ func _run() -> void:
 	await _shot("04_blanco")
 	if _can_capture():
 		_check(_min_brightness() > 0.99, "la imagen es blanco puro (mín %.3f)" % _min_brightness())
+
+	_check(_audio.is_music_playing() and not _music_finished, "la música sigue sonando en el blanco")
+
+	print("== Fin de la música: 2:15")
+	_audio._music.seek(133.0)
+	await _wait(1.5)
+	_check(_audio.is_music_playing() and _audio.get_music_volume_db() < -2.5,
+			"la música se desvanece antes de 2:15 (%.1f dB)" % _audio.get_music_volume_db())
+	await _wait(1.5)
+	_check(_music_finished and not _audio.is_music_playing(), "a las 2:15 queda el silencio")
 
 	print("== El blanco y el silencio persisten")
 	_player.set_look_target(120, 0)
@@ -186,7 +209,7 @@ func _run() -> void:
 	await _wait(2.0)
 	veil = _hud.get_veil_color()
 	_check(veil.a > 0.99 and veil.v > 0.99, "el blanco no se retira")
-	_check(_audio.is_bus_muted() and not _audio.is_music_playing(), "el sonido no se reanuda")
+	_check(not _audio.is_music_playing(), "el sonido no se reanuda")
 
 	print("")
 	if _failures.is_empty():

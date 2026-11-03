@@ -11,8 +11,9 @@ Todo comienza en negro absoluto y en silencio. Unos segundos después aparece, m
 lejos, un punto de luz, y empieza a sonar la música, apenas audible. Al avanzar, la
 música crece y se aclara, y el punto se transforma poco a poco en la forma de una
 puerta: un vano de luz blanca pura que proyecta su haz sobre el suelo. La puerta no se
-abre; se atraviesa. Al cruzarla todo queda blanco, la música se corta de golpe y ya
-no ocurre nada más.
+abre; se atraviesa. Al cruzarla todo queda blanco y la música salta a su minuto 1:43: tras toda la
+intensidad acumulada, un pasaje más apagado, casi triste. Al llegar a 2:15 se apaga y
+ya no ocurre nada más.
 
 La obra no explica su significado. No hay meta, recompensa, texto final ni pantalla de
 victoria. La aplicación sigue en marcha y el espectador puede permanecer en ese blanco
@@ -24,7 +25,7 @@ todo lo que quiera.
 | **PROMISE** | Aparece un punto de luz a 76 m; la música entra muy tenue, lejana (filtrada). |
 | **APPROACH** | La música crece de −30 dB a −2 dB y se abre su filtro. A partir de 55 m de la puerta, el punto se estira hasta tomar forma de puerta (completa a 14 m). El brillo en el suelo empieza a notarse a 32 m, de forma casi imperceptible, y alcanza su plenitud a 8 m. |
 | **THRESHOLD** | En los últimos 3 m, un resplandor blanco empieza a cubrir la pantalla. |
-| **ABSENCE** | Al cruzar, la pantalla queda en blanco puro y no vuelve a cambiar. La música se corta en el instante: de la música intensa al silencio absoluto. |
+| **ABSENCE** | Al cruzar, la pantalla queda en blanco puro y no vuelve a cambiar. En ese instante la música salta a 1:43, a plena intensidad y sin filtro. Suena hasta 2:15, se desvanece en el último segundo y queda el silencio. |
 
 Esta versión incorpora la retroalimentación de la profesora: inicio en negro y sin
 música, aparición de un punto esférico lejano, música que se intensifica con la
@@ -117,7 +118,7 @@ scripts/
   experience_controller.gd   Fases, anticipación, forma de la puerta y resplandor
   player_controller.gd       Movimiento guiado y mirada limitada (velocidad)
   door_controller.gd         Aparición, forma e intensidad de la luz de la puerta
-  audio_controller.gd        Volumen y filtro de la música según la cercanía; corte al silencio
+  audio_controller.gd        Música adaptativa: cercanía, bucle al compás y salto al cruzar
   final_room.gd              Señales de entrada y salida del espacio tras la puerta
   hud.gd                     Indicaciones, resplandor y blanco final
 assets/
@@ -138,7 +139,23 @@ En cada frame mide la distancia a la puerta y, a partir de ella, ajusta:
 
 Cuando `FinalRoom` emite `player_entered` (el espectador cruza el plano de la puerta),
 llama a `Hud.play_crossing()`, `DoorController.extinguish()` y
-`AudioController.cut_to_silence()`. Las tres acciones son irreversibles.
+`AudioController.play_crossing()`. Las tres acciones son irreversibles.
+
+## Música adaptativa
+
+La música sigue tres reglas:
+
+- **Guiada por la distancia.** Antes de cruzar, el volumen (−30 → −2 dB) y el filtro
+  paso bajo (500 → 20 000 Hz) dependen de la cercanía a la puerta.
+- **Separada por fases.** Antes del cruce suena la canción desde 0:00. El fragmento
+  de 1:43 a 2:15 queda reservado para el cruce.
+- **Bucle cuantizado al compás.** La canción va a 96 BPM, así que un compás de 4
+  tiempos dura 2,5 s. Si el espectador tarda en llegar, al terminar el compás
+  anterior a 1:43 (en 1:42,5) la canción vuelve a 0:00.
+
+Los tiempos se ajustan en el nodo `AudioController` de `main.tscn`, en los grupos
+**Tempo** y **Fragmentos** del Inspector: `crossing_cue_time` (1:43 = 103 s),
+`song_end_time` (2:15 = 135 s), `approach_loop_start` y `first_downbeat`.
 
 ## Música y derechos
 
@@ -195,8 +212,10 @@ superadas, con ventana y en headless.**
 - El resplandor solo aparece en los últimos metros.
 - La puerta se atraviesa sin abrirse. Al cruzar queda blanco puro: se midió la captura
   y el brillo mínimo es 1,000.
-- La música se corta en el mismo instante del cruce (0,000 s) y queda en silencio
-  absoluto.
+- Antes de cruzar, la canción no llega a 1:43; al final del compás de 1:42,5 vuelve al
+  inicio.
+- Al cruzar suena el minuto 1:43 a plena intensidad y sin filtro. A las 2:15 se
+  desvanece y queda el silencio.
 - El blanco y el silencio persisten al moverse y al volver al pasillo.
 
 **Revisión visual.** Se compararon capturas reales con la imagen de referencia y se

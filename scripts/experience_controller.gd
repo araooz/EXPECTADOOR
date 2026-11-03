@@ -7,7 +7,8 @@ extends Node3D
 ##   PROMISE    Aparece un punto de luz a lo lejos; comienza la música, muy tenue.
 ##   APPROACH   El espectador avanza; la música crece y el punto toma forma de puerta.
 ##   THRESHOLD  Ante el vano, la luz empieza a llenar la mirada.
-##   ABSENCE    Cruza: todo queda blanco y la música se corta de golpe.
+##   ABSENCE    Cruza: todo queda blanco y la música salta a su fragmento final
+##              (1:43); al terminar, solo queda el silencio.
 
 enum Phase { DARKNESS, PROMISE, APPROACH, THRESHOLD, ABSENCE }
 
@@ -111,7 +112,7 @@ func _on_player_crossed(_player_body: Node3D) -> void:
 		_set_phase(Phase.ABSENCE)
 		_hud.play_crossing()
 		_door.extinguish()
-		_audio.cut_to_silence()
+		_audio.play_crossing()
 
 
 func _on_player_exited_beyond(_player_body: Node3D) -> void:
