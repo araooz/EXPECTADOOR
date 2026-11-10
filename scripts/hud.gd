@@ -11,7 +11,6 @@ extends CanvasLayer
 
 var _intro_tween: Tween
 var _intro_shown: bool = false
-var _intro_dismissed: bool = false
 var _crossed: bool = false
 
 @onready var _veil: ColorRect = $Veil
@@ -25,23 +24,12 @@ func _ready() -> void:
 
 ## Muestra brevemente las indicaciones de control.
 func show_intro_hint() -> void:
-	if _intro_shown or _intro_dismissed:
+	if _intro_shown:
 		return
 	_intro_shown = true
 	_intro_tween = create_tween()
 	_intro_tween.tween_property(_intro_hint, "modulate:a", hint_opacity, hint_fade_duration)
 	_intro_tween.tween_interval(intro_hint_hold)
-	_intro_tween.tween_property(_intro_hint, "modulate:a", 0.0, hint_fade_duration)
-
-
-## Retira las indicaciones iniciales cuando ya no son necesarias.
-func dismiss_intro_hint() -> void:
-	if _intro_dismissed:
-		return
-	_intro_dismissed = true
-	if _intro_tween:
-		_intro_tween.kill()
-	_intro_tween = create_tween()
 	_intro_tween.tween_property(_intro_hint, "modulate:a", 0.0, hint_fade_duration)
 
 

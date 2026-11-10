@@ -1,4 +1,4 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://658vrtxnk6mv"]
 
 [ext_resource type="Script" path="res://scripts/final_room.gd" id="1_final_room"]
 
@@ -15,43 +15,43 @@ size = Vector3(0.3, 4.2, 8.3)
 size = Vector3(3.5, 4.2, 0.3)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_5"]
-size = Vector3(8.0, 3.0, 8.3)
+size = Vector3(8, 3, 8.3)
 
-[node name="FinalRoom" type="Node3D"]
+[node name="FinalRoom" type="Node3D" unique_id=2114694730]
 script = ExtResource("1_final_room")
 
-[node name="Bounds" type="StaticBody3D" parent="."]
+[node name="Bounds" type="StaticBody3D" parent="." unique_id=1403226971]
 collision_mask = 0
 
-[node name="Floor" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(0.0, -0.1, -4.6)
+[node name="Floor" type="CollisionShape3D" parent="Bounds" unique_id=39905662]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, -4.6)
 shape = SubResource("BoxShape3D_1")
 
-[node name="BackWall" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(0.0, 1.9, -8.75)
+[node name="BackWall" type="CollisionShape3D" parent="Bounds" unique_id=1649359485]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, -8.75)
 shape = SubResource("BoxShape3D_2")
 
-[node name="LeftWall" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(-4.15, 1.9, -4.45)
+[node name="LeftWall" type="CollisionShape3D" parent="Bounds" unique_id=1049498365]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.15, 1.9, -4.45)
 shape = SubResource("BoxShape3D_3")
 
-[node name="RightWall" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(4.15, 1.9, -4.45)
+[node name="RightWall" type="CollisionShape3D" parent="Bounds" unique_id=1885301856]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.15, 1.9, -4.45)
 shape = SubResource("BoxShape3D_3")
 
-[node name="FrontWallLeft" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(-2.4, 1.9, -0.45)
+[node name="FrontWallLeft" type="CollisionShape3D" parent="Bounds" unique_id=279152730]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 1.9, -0.45)
 shape = SubResource("BoxShape3D_4")
 
-[node name="FrontWallRight" type="CollisionShape3D" parent="Bounds"]
-position = Vector3(2.4, 1.9, -0.45)
+[node name="FrontWallRight" type="CollisionShape3D" parent="Bounds" unique_id=2096299583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 1.9, -0.45)
 shape = SubResource("BoxShape3D_4")
 
-[node name="RoomVolume" type="Area3D" parent="."]
+[node name="RoomVolume" type="Area3D" parent="." unique_id=353359023]
 collision_layer = 0
 collision_mask = 2
 monitorable = false
 
-[node name="Shape" type="CollisionShape3D" parent="RoomVolume"]
-position = Vector3(0.0, 1.5, -4.45)
+[node name="Shape" type="CollisionShape3D" parent="RoomVolume" unique_id=1128148647]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -4.45)
 shape = SubResource("BoxShape3D_5")

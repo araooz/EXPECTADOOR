@@ -1,25 +1,31 @@
 class_name ExperienceController
 extends Node3D
-## Coordina las fases de la obra y comunica a los componentes cuánto se ha
-## acercado el espectador a la puerta.
+## Coordina las fases de la obra. El espectador no se desplaza por sí mismo: es
+## llevado por el pasillo a un ritmo fijo, de modo que el recorrido dura siempre
+## lo mismo y cruza la puerta exactamente cuando la música se corta.
 ##
-##   DARKNESS   Negro total y silencio durante unos segundos.
+##   DARKNESS   Negro total y silencio ([member silence_duration]).
 ##   PROMISE    Aparece un punto de luz a lo lejos; comienza la música, muy tenue.
 ##   APPROACH   El espectador avanza; la música crece y el punto toma forma de puerta.
 ##   THRESHOLD  Ante el vano, la luz empieza a llenar la mirada.
-##   ABSENCE    Cruza: todo queda blanco y la música salta a su fragmento final
-##              (1:43); al terminar, solo queda el silencio.
+##   ABSENCE    Cruza: todo queda blanco y la música se corta a silencio total.
+##
+## Línea de tiempo (valores por defecto): 0:00–0:02,5 silencio; 0:02,5 entra la
+## canción desde su 0:00; 1:46,0 cruce y corte (canción en 1:43,5).
+## La duración total es [member silence_duration] + [member AudioController.cut_time].
 
 enum Phase { DARKNESS, PROMISE, APPROACH, THRESHOLD, ABSENCE }
 
 signal phase_changed(phase: Phase)
 
-## Segundos de negro total antes de que aparezca el punto de luz.
-@export var darkness_duration: float = 4.0
+## Segundos de negro total y silencio antes de que aparezcan la luz y la música.
+@export var silence_duration: float = 2.5
+## Dirección del recorrido (el pasillo avanza hacia -Z).
+@export var path_direction: Vector3 = Vector3.FORWARD
+## Segundos que tarda el avance en alcanzar su velocidad de crucero al comenzar.
+@export var travel_ease_in: float = 4.0
 ## Distancia recorrida que marca el paso de la promesa a la aproximación.
 @export var approach_trigger_distance: float = 0.6
-## Distancia recorrida a partir de la cual se retiran las indicaciones iniciales.
-@export var intro_hint_dismiss_distance: float = 6.0
 ## Distancia a la puerta a la que la anticipación alcanza su máximo.
 @export var arrival_distance: float = 1.5
 ## Velocidad con la que luz y sonido siguen a la posición (más bajo = más lento).
@@ -46,32 +52,41 @@ signal phase_changed(phase: Phase)
 var phase: Phase = Phase.DARKNESS
 var anticipation: float = 0.0
 
+## Segundos transcurridos desde el comienzo de la obra.
+var elapsed: float = 0.0
+
 var _start_position: Vector3
 var _path_length: float
+var _travel_speed: float
 
 @onready var _player: PlayerController = $Player
 @onready var _door: DoorController = $Door
-@onready var _final_room: FinalRoom = $FinalRoom
 @onready var _audio: AudioController = $AudioController
 @onready var _hud: Hud = $Hud
 
 
 func _ready() -> void:
+	path_direction = path_direction.normalized()
 	_start_position = _player.global_position
 	_path_length = maxf(distance_to_door(), arrival_distance + 0.01)
-
-	_final_room.player_entered.connect(_on_player_crossed)
-	_final_room.player_exited.connect(_on_player_exited_beyond)
-
-	get_tree().create_timer(darkness_duration).timeout.connect(_reveal)
+	# Velocidad de crucero tal que, con la aceleración inicial, el espectador
+	# alcanza el plano de la puerta justo al terminar la línea de tiempo.
+	_travel_speed = _path_length / maxf(get_travel_duration() - travel_ease_in * 0.5, 0.01)
 
 
 func _process(delta: float) -> void:
-	var travelled := (_player.global_position - _start_position).dot(_player.path_direction)
-	if phase == Phase.PROMISE and travelled >= approach_trigger_distance:
+	if phase == Phase.ABSENCE:
+		return
+	_advance_clock(delta)
+	if phase == Phase.DARKNESS and elapsed >= silence_duration:
+		_reveal()
+	_player.global_position = _start_position + path_direction * get_travelled_distance()
+	if elapsed >= get_total_duration():
+		_cross()
+		return
+
+	if phase == Phase.PROMISE and get_travelled_distance() >= approach_trigger_distance:
 		_set_phase(Phase.APPROACH)
-	if travelled >= intro_hint_dismiss_distance:
-		_hud.dismiss_intro_hint()
 
 	var distance := distance_to_door()
 	if phase == Phase.APPROACH and distance <= glare_distance:
@@ -91,37 +106,56 @@ func _process(delta: float) -> void:
 	_hud.set_glare(glare * glare * glare * glare_max_before_crossing)
 
 
+## Duración total de la obra hasta el cruce: silencio inicial + canción hasta el corte.
+func get_total_duration() -> float:
+	return silence_duration + _audio.cut_time
+
+
+## Duración del avance: desde que aparece la luz hasta el cruce.
+func get_travel_duration() -> float:
+	return get_total_duration() - silence_duration
+
+
+## Metros recorridos según la línea de tiempo: aceleración suave durante
+## [member travel_ease_in] y después velocidad constante hasta la puerta.
+func get_travelled_distance() -> float:
+	var t := clampf(elapsed - silence_duration, 0.0, get_travel_duration())
+	if t < travel_ease_in:
+		return _travel_speed * t * t / (2.0 * travel_ease_in)
+	return _travel_speed * (t - travel_ease_in * 0.5)
+
+
 ## Distancia del espectador a la puerta medida sobre el eje del recorrido.
 func distance_to_door() -> float:
-	return maxf((_door.global_position - _player.global_position).dot(_player.path_direction), 0.0)
+	return maxf((_door.global_position - _player.global_position).dot(path_direction), 0.0)
+
+
+## Mientras suena la canción, su posición es el reloj: así el corte de la música
+## y el cruce de la puerta coinciden aunque haya tirones de imagen.
+func _advance_clock(delta: float) -> void:
+	if _audio.is_music_playing():
+		elapsed = silence_duration + _audio.get_song_time()
+	else:
+		elapsed += delta
 
 
 func _reveal() -> void:
-	if phase != Phase.DARKNESS:
-		return
 	_set_phase(Phase.PROMISE)
 	_door.reveal()
 	_audio.start()
 	_hud.show_intro_hint()
 
 
-func _on_player_crossed(_player_body: Node3D) -> void:
-	_player.free_roam = true
-	if phase != Phase.ABSENCE:
-		_reveal()  # por si cruzara antes de que apareciera la luz
-		_set_phase(Phase.ABSENCE)
-		_hud.play_crossing()
-		_door.extinguish()
-		_audio.play_crossing()
-
-
-func _on_player_exited_beyond(_player_body: Node3D) -> void:
-	_player.free_roam = false
+func _cross() -> void:
+	_set_phase(Phase.ABSENCE)
+	_hud.play_crossing()
+	_door.extinguish()
+	_audio.cut()
 
 
 func _set_phase(new_phase: Phase) -> void:
 	if new_phase <= phase:
 		return
 	phase = new_phase
-	print_verbose("EXPECTADOOR: fase ", Phase.keys()[phase])
+	print_verbose("EXPECTADOOR: fase ", Phase.keys()[phase], " (%.2f s)" % elapsed)
 	phase_changed.emit(phase)

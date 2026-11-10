@@ -1,17 +1,8 @@
 class_name PlayerController
-extends CharacterBody3D
-## Controlador en primera persona para un recorrido guiado.
-##
-## La mirada puede girar libremente en cualquier dirección. En el pasillo el
-## desplazamiento sigue el eje del recorrido; en la habitación final (modo
-## [member free_roam]) se camina hacia donde se mira.
-
-@export_group("Movimiento")
-@export var walk_speed: float = 3.2
-@export var acceleration: float = 3.5
-@export var deceleration: float = 5.0
-## Dirección del recorrido en el pasillo (el pasillo avanza hacia -Z).
-@export var path_direction: Vector3 = Vector3.FORWARD
+extends Node3D
+## El espectador en primera persona. No puede desplazarse: solo girar la mirada
+## en cualquier dirección. Su posición la fija [ExperienceController], que lo
+## lleva por el pasillo a un ritmo sincronizado con la música.
 
 @export_group("Mirada")
 @export var mouse_sensitivity: float = 0.0022
@@ -19,10 +10,6 @@ extends CharacterBody3D
 ## Límite vertical de la mirada (por debajo de 90° para que la vista no se invierta).
 @export var pitch_limit_degrees: float = 89.0
 
-## Si es verdadero, se camina en la dirección de la mirada (habitación final).
-var free_roam: bool = false
-
-var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _yaw: float = 0.0
 var _pitch: float = 0.0
 var _target_yaw: float = 0.0
@@ -33,7 +20,6 @@ var _target_pitch: float = 0.0
 
 
 func _ready() -> void:
-	path_direction = path_direction.normalized()
 	_capture_mouse(true)
 
 
@@ -60,29 +46,6 @@ func _process(delta: float) -> void:
 	_pitch = lerpf(_pitch, _target_pitch, weight)
 	_head.rotation.y = _yaw
 	_camera.rotation.x = _pitch
-
-
-func _physics_process(delta: float) -> void:
-	var input_axis := Input.get_axis("move_back", "move_forward")
-	var direction := path_direction
-	if free_roam:
-		direction = -_head.global_basis.z
-		direction.y = 0.0
-		direction = direction.normalized()
-
-	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	var target := direction * input_axis * walk_speed
-	var rate := acceleration if not is_zero_approx(input_axis) else deceleration
-	horizontal = horizontal.move_toward(target, rate * delta)
-	velocity.x = horizontal.x
-	velocity.z = horizontal.z
-
-	if is_on_floor():
-		velocity.y = 0.0
-	else:
-		velocity.y -= _gravity * delta
-
-	move_and_slide()
 
 
 ## Fija el objetivo de la mirada en grados (se respeta el límite vertical).
