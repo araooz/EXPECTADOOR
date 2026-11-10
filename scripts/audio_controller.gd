@@ -112,7 +112,12 @@ func play_echo(transition: float, hold: float, fade_out: float) -> void:
 func get_song_time() -> float:
 	if not _music.playing:
 		return 0.0
-	return _music.get_playback_position() + AudioServer.get_time_since_last_mix()
+	return _music.get_playback_position() + AudioServer.get_time_since_last_mix() * _music.pitch_scale
+
+
+## Solo para desarrollo ([DevSpeed]): reproduce la canción más rápido.
+func set_playback_speed(value: float) -> void:
+	_music.pitch_scale = value
 
 
 func get_music_volume_db() -> float:

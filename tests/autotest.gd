@@ -40,7 +40,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	# La ventana de prueba puede recibir el teclado real del escritorio.
-	InputMap.action_erase_events(&"toggle_mouse_capture")
+	for action in [&"toggle_mouse_capture", &"dev_speed_x2", &"dev_speed_x4"]:
+		InputMap.action_erase_events(action)
 	var packed: PackedScene = load(MAIN_SCENE)
 	_main = packed.instantiate()
 	_start_time = _now()

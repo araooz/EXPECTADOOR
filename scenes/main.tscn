@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/door.tscn" id="4_door"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="6_player"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/dev_speed.gd" id="9_dev_speed"]
 [ext_resource type="AudioStream" path="res://assets/audio/goodbye_to_a_world.mp3" id="8_goodbye_to_a_world"]
 
 [sub_resource type="Environment" id="Environment_1"]
@@ -53,3 +54,6 @@ volume_db = -80.0
 bus = &"Ambience"
 
 [node name="Hud" parent="." instance=ExtResource("7_hud")]
+
+[node name="DevSpeed" type="Node" parent="."]
+script = ExtResource("9_dev_speed")
