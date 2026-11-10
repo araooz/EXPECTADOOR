@@ -20,8 +20,8 @@ signal music_finished
 
 @export_group("Corte")
 ## Punto de la canción en que se corta a silencio (coincide con el cruce de la puerta).
-## El clímax de la canción se sostiene hasta ~104,7 s.
-@export var cut_time: float = 103.5
+## El clímax de la canción se sostiene hasta ~104,7 s y luego empieza a apagarse.
+@export var cut_time: float = 105.5
 ## Rampa mínima al cortar, solo para evitar un chasquido; se percibe como un corte seco.
 @export var cut_ramp_duration: float = 0.02
 

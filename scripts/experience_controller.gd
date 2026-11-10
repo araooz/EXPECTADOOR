@@ -11,7 +11,7 @@ extends Node3D
 ##   ABSENCE    Cruza: todo queda blanco y la música se corta a silencio total.
 ##
 ## Línea de tiempo (valores por defecto): 0:00–0:02,5 silencio; 0:02,5 entra la
-## canción desde su 0:00; 1:46,0 cruce y corte (canción en 1:43,5).
+## canción desde su 0:00; 1:48,0 cruce y corte (canción en 1:45,5).
 ## La duración total es [member silence_duration] + [member AudioController.cut_time].
 
 enum Phase { DARKNESS, PROMISE, APPROACH, THRESHOLD, ABSENCE }

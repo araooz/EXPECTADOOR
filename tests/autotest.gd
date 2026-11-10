@@ -18,8 +18,9 @@ var _hud: Hud
 var _absence_time: float = -1.0
 var _song_time_at_cut: float = -1.0
 var _music_finished: bool = false
-## Tiempo de juego acumulado (el mismo reloj que usan los tweens).
-var _game_time: float = 0.0
+## Reloj de pared al cargar la escena. Se usa el reloj del sistema y no la suma
+## de los delta: si la ventana se ralentiza (p. ej. oculta), el delta de Godot
+## se limita y ese reloj se atrasa, mientras que la música sigue en tiempo real.
 var _start_time: float = 0.0
 
 
@@ -30,17 +31,12 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func _process(delta: float) -> bool:
-	_game_time += delta
-	return false
-
-
 func _run() -> void:
 	# La ventana de prueba puede recibir el teclado real del escritorio.
 	InputMap.action_erase_events(&"toggle_mouse_capture")
 	var packed: PackedScene = load(MAIN_SCENE)
 	_main = packed.instantiate()
-	_start_time = _game_time
+	_start_time = _now()
 	root.add_child(_main)
 	current_scene = _main
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # no retener el cursor durante la prueba
@@ -50,7 +46,7 @@ func _run() -> void:
 	_hud = _main.get_node("Hud")
 	_main.phase_changed.connect(func(p: ExperienceController.Phase) -> void:
 		if p == ExperienceController.Phase.ABSENCE:
-			_absence_time = _game_time - _start_time
+			_absence_time = _now() - _start_time
 			_song_time_at_cut = _audio.get_song_time())
 	_audio.music_finished.connect(func() -> void: _music_finished = true)
 
@@ -62,8 +58,8 @@ func _run() -> void:
 	var music_stream: AudioStreamMP3 = _main.get_node("AudioController/Music").stream
 	_check(music_stream != null, "la canción está cargada")
 	_check(is_equal_approx(_main.silence_duration, 2.5), "silencio inicial de 2,5 s")
-	_check(is_equal_approx(_main.get_total_duration(), 106.0),
-			"duración total hasta el cruce: %.2f s (1:46)" % _main.get_total_duration())
+	_check(is_equal_approx(_main.get_total_duration(), 108.0),
+			"duración total hasta el cruce: %.2f s (1:48)" % _main.get_total_duration())
 	_check(not InputMap.has_action(&"move_forward") and not InputMap.has_action(&"move_back"),
 			"no existen acciones de desplazamiento")
 	_check(_player.find_children("*", "CollisionObject3D", true, false).is_empty() and not _player.is_class("PhysicsBody3D"),
@@ -133,7 +129,7 @@ func _run() -> void:
 		music_samples.append(_audio.get_music_volume_db())
 		shape_samples.append(_door.get_shape())
 		distance_samples.append(_main.distance_to_door())
-		sync_samples.append(absf((_game_time - _start_time) - _main.elapsed))
+		sync_samples.append(absf((_now() - _start_time) - _main.elapsed))
 		if floor_light_far < 0.0 and _main.distance_to_door() < 45.0:
 			floor_light_far = beam.light_energy
 		if not shot_taken and _main.distance_to_door() < 35.0:
@@ -154,22 +150,22 @@ func _run() -> void:
 	_check(_audio.is_music_playing(), "la canción sigue sonando (%.1f s)" % _audio.get_song_time())
 
 	print("== Estado 3: el umbral")
-	while _main.elapsed < 104.8:
+	while _main.elapsed < 106.8:
 		await _wait(0.05)
 	_check(_main.phase == ExperienceController.Phase.THRESHOLD, "fase THRESHOLD (%.1f m)" % _main.distance_to_door())
 	var glare := _hud.get_veil_color().a
 	_check(glare > 0.05 and glare < 0.95, "el resplandor crece ante la puerta (%.2f)" % glare)
 	await _shot("03_umbral")
 
-	print("== Estado 4: el cruce y el silencio (1:46)")
-	while _main.phase != ExperienceController.Phase.ABSENCE and _game_time - _start_time < 115.0:
+	print("== Estado 4: el cruce y el silencio (1:48)")
+	while _main.phase != ExperienceController.Phase.ABSENCE and _now() - _start_time < 115.0:
 		await _wait(0.01)
 	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse")
-	_check(absf(_main.elapsed - 106.0) < 0.05, "el cruce ocurre a 1:46,0 en la línea de tiempo (%.3f s)" % _main.elapsed)
-	_check(absf(_absence_time - 106.0) < clock_tolerance,
+	_check(absf(_main.elapsed - 108.0) < 0.05, "el cruce ocurre a 1:48,0 en la línea de tiempo (%.3f s)" % _main.elapsed)
+	_check(absf(_absence_time - 108.0) < clock_tolerance,
 			"y a %.2f s de reloj real desde el inicio" % _absence_time)
 	_check(absf(_song_time_at_cut - _audio.cut_time) < 0.05,
-			"la canción se corta en %.2f s (1:43,5)" % _song_time_at_cut)
+			"la canción se corta en %.2f s (1:45,5)" % _song_time_at_cut)
 	_check(_main.distance_to_door() < 0.05, "en el plano de la puerta (%.3f m)" % _main.distance_to_door())
 	_check(_door.is_extinguished, "la luz de la puerta se extingue al cruzar")
 	await _wait(0.1)
@@ -206,8 +202,14 @@ func _check(ok: bool, label: String) -> void:
 		_failures.append(label)
 
 
+func _now() -> float:
+	return Time.get_ticks_usec() / 1_000_000.0
+
+
 func _wait(seconds: float) -> void:
-	await create_timer(seconds).timeout
+	var until := _now() + seconds
+	while _now() < until:
+		await process_frame
 
 
 func _only_light_is_door() -> bool:

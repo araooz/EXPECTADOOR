@@ -21,26 +21,27 @@ La obra no explica su significado. No hay meta, recompensa, texto final ni panta
 victoria. La aplicación sigue en marcha y el espectador puede permanecer en ese blanco
 todo lo que quiera.
 
-## Duración exacta: 1:46
+## Duración exacta: 1:48
 
 | Tiempo | Qué ocurre |
 |---|---|
 | 0:00,0 – 0:02,5 | Negro y silencio. |
 | 0:02,5 | Aparece el punto; la canción entra desde su 0:00, muy tenue. |
-| 0:02,5 – 1:46,0 | Avance automático hacia la puerta (75,8 m). |
-| 1:46,0 | Cruce de la puerta. La canción (en su 1:43,5) se corta a silencio total y la pantalla queda blanca. |
+| 0:02,5 – 1:48,0 | Avance automático hacia la puerta (75,8 m). |
+| 1:48,0 | Cruce de la puerta. La canción (en su 1:45,5) se corta a silencio total y la pantalla queda blanca. |
 
-La duración total es `silence_duration` (2,5 s, en `Main`) + `cut_time` (103,5 s, en
-`AudioController`). El clímax de la canción se sostiene hasta ~1:44,7, así que el corte
-cae en plena intensidad. Si se prefiere que la canción llegue a 1:44, basta con poner
-`cut_time = 104`: el recorrido se recalcula solo (total 1:46,5).
+La duración total es `silence_duration` (2,5 s, en `Main`) + `cut_time` (105,5 s, en
+`AudioController`). Para alargar o acortar la experiencia basta con cambiar `cut_time`:
+el recorrido se recalcula solo. El clímax de la canción se sostiene hasta ~1:44,7; en
+1:45,5 ya está en su caída (~10 dB por debajo del pico), así que el corte llega cuando
+la música empieza a apagarse.
 
 **Sincronía.** Mientras suena la canción, su posición de reproducción es el reloj de
 la obra: la posición del espectador se calcula a partir de ella. Así el cruce y el
 corte ocurren en el mismo instante aunque haya tirones de imagen.
 
 **Avance.** Acelera suavemente durante 4 s (`travel_ease_in`) y luego sigue a velocidad
-constante (~0,74 m/s) hasta cruzar la puerta sin frenar.
+constante (~0,73 m/s) hasta cruzar la puerta sin frenar.
 
 | Fase | Qué ocurre |
 |---|---|
@@ -48,12 +49,12 @@ constante (~0,74 m/s) hasta cruzar la puerta sin frenar.
 | **PROMISE** | Aparece un punto de luz a 76 m; la música entra muy tenue, lejana (filtrada). |
 | **APPROACH** | El espectador es llevado hacia la puerta. La música crece de −30 dB a −2 dB y se abre su filtro. A partir de 55 m de la puerta, el punto se estira hasta tomar forma de puerta (completa a 14 m). El brillo en el suelo empieza a notarse a 32 m, de forma casi imperceptible, y alcanza su plenitud a 8 m. |
 | **THRESHOLD** | En los últimos 3 m, un resplandor blanco empieza a cubrir la pantalla. |
-| **ABSENCE** | Al cruzar (1:46), la música se corta a silencio total y la pantalla queda en blanco puro. Nada vuelve a cambiar. |
+| **ABSENCE** | Al cruzar (1:48), la música se corta a silencio total y la pantalla queda en blanco puro. Nada vuelve a cambiar. |
 
 Esta versión incorpora la retroalimentación de la profesora: inicio en negro y sin
 música, aparición de un punto esférico lejano, música que se intensifica con la
 cercanía, puerta que toma forma y final en blanco. Además, el espectador ya no se
-desplaza por sí mismo y la experiencia dura exactamente 1:46.
+desplaza por sí mismo y la experiencia dura exactamente 1:48.
 
 La referencia visual de la puerta es `assets/sugerencias/puerta blanca fondo negro.jpg`.
 
@@ -143,7 +144,7 @@ y `AudioController.cut()`. Las tres acciones son irreversibles.
 
 - **Guiada por la distancia.** El volumen (−30 → −2 dB) y el filtro paso bajo
   (500 → 20 000 Hz) dependen de la cercanía a la puerta.
-- **Corte seco.** En `cut_time` (1:43,5) la música se apaga en 20 ms
+- **Corte seco.** En `cut_time` (1:45,5) la música se apaga en 20 ms
   (`cut_ramp_duration`, solo para evitar un chasquido) y queda el silencio.
 
 ## Música y derechos
@@ -168,7 +169,7 @@ Todos se editan en el Inspector:
     empieza a notarse el brillo en el suelo y dónde alcanza su plenitud;
   - `glare_distance` (3 m): distancia a la que empieza el resplandor;
   - `anticipation_response`: lo rápido que luz y sonido siguen a la posición.
-- **AudioController**: `cut_time` (103,5 s), `music_volume_range_db` (−30 → −2 dB),
+- **AudioController**: `cut_time` (105,5 s), `music_volume_range_db` (−30 → −2 dB),
   `intro_fade_duration`, `lowpass_cutoff_range_hz`.
 - **Door**: `reveal_duration`, energías del haz y del halo, `point_glow_strength`.
 - **Hud**: `crossing_white_duration` (0,4 s): paso al blanco al cruzar.
@@ -191,14 +192,17 @@ superadas, con ventana y en headless.**
 - 0–2,5 s: sin luz y sin música; brillo máximo de la captura 0,000 (negro puro).
 - A los 2,5 s aparece el punto (forma 0,00) a 75,8 m y la canción empieza desde 0:00.
 - La mirada gira libremente (−180°); girar o pulsar teclas no altera la posición.
-- El avance es continuo; la música crece de forma monótona de −29,9 a −3,7 dB (máx.
+- El avance es continuo; la música crece de forma monótona de −29,9 a −4,0 dB (máx.
   0,7 dB cada 2 s); el punto toma forma de puerta; con solo el punto visible, el suelo
   no recibe luz; el resplandor aparece en los últimos metros.
-- Cruce a 106,00 s en la línea de tiempo y **106,09 s de reloj real** (con ventana),
-  en el plano de la puerta. La canción se corta en 103,50 s. Silencio total inmediato y
+- Cruce a 108,00 s en la línea de tiempo y **107,91 s de reloj real** (con ventana),
+  en el plano de la puerta. La canción se corta en 105,50 s. Silencio total inmediato y
   blanco puro (brillo mínimo 1,000), que persisten.
 - En headless, el driver de audio simulado avanza ~0,7 % más lento que el reloj real
-  (cruce a ~106,8 s de reloj); con audio real el desfase es de ~0,08 s.
+  (cruce ~0,8 s más tarde según el reloj); con audio real el desfase es de ~0,1 s.
+- Si la imagen se ralentiza (por ejemplo, con la ventana oculta, a ~1 FPS), el cruce y
+  el corte siguen ocurriendo en el momento correcto, porque el reloj es la canción. Por
+  eso la prueba mide el tiempo con el reloj del sistema y no sumando los `delta`.
 
 **Revisión visual.** Se compararon capturas reales con la imagen de referencia y se
 corrigieron:
