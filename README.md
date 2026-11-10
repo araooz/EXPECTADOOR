@@ -145,6 +145,8 @@ exportación release):
 |---|---|
 | `1` | Alterna velocidad x2 |
 | `2` | Alterna velocidad x4 |
+| `3` | Alterna velocidad x8 |
+| `4` | Alterna velocidad x16 |
 
 Pulsar la misma tecla otra vez vuelve a x1. Se aceleran la canción (que sube de tono) y,
 con ella, el recorrido, además de la aparición de la luz, la huella y el eco. Para
@@ -166,7 +168,7 @@ scripts/
   door_controller.gd         Aparición, forma e intensidad de la luz de la puerta
   audio_controller.gd        Música: crece con la cercanía y al cruzar se aleja hasta ser el eco
   hud.gd                     Resplandor, blanco final y huella
-  dev_speed.gd               Solo desarrollo: teclas 1 y 2 para acelerar x2 / x4
+  dev_speed.gd               Solo desarrollo: teclas 1–4 para acelerar x2 / x4 / x8 / x16
 assets/
   audio/goodbye_to_a_world.mp3   Música (ver "Música y derechos")
   audio/default_bus_layout.tres  Bus "Ambience": paso bajo y reverberación

@@ -1,14 +1,19 @@
 class_name DevSpeed
 extends Node
 ## SOLO PARA DESARROLLO: acelera toda la experiencia para revisarla más rápido.
-##   1  alterna x2      2  alterna x4      (la misma tecla otra vez vuelve a x1)
+##   1  x2      2  x4      3  x8      4  x16   (la misma tecla otra vez vuelve a x1)
 ##
 ## Acelera la canción (y con ella el recorrido, que la usa como reloj) y el
 ## reloj del motor (tweens y temporizadores: aparición de la luz, huella, eco).
 ## La música sube de tono al acelerarse. En una exportación release este nodo
 ## se elimina solo, y para quitarlo del todo basta con borrarlo de main.tscn.
 
-const SPEEDS := {&"dev_speed_x2": 2.0, &"dev_speed_x4": 4.0}
+const SPEEDS := {
+	&"dev_speed_x2": 2.0,
+	&"dev_speed_x4": 4.0,
+	&"dev_speed_x8": 8.0,
+	&"dev_speed_x16": 16.0,
+}
 
 var speed: float = 1.0
 
