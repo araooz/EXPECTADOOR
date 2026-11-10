@@ -1,27 +1,15 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+[ext_resource type="Shader" path="res://assets/materials/afterimage.gdshader" id="2_afterimage"]
 
-[sub_resource type="LabelSettings" id="LabelSettings_1"]
-font_size = 15
-font_color = Color(0.86, 0.88, 0.92, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_trace"]
+shader = ExtResource("2_afterimage")
+shader_parameter/darkness = 0.0
+shader_parameter/shape = 1.0
 
 [node name="Hud" type="CanvasLayer"]
 script = ExtResource("1_hud")
-
-[node name="IntroHint" type="Label" parent="."]
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -78.0
-offset_bottom = -50.0
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 2
-text = "ratón  mirar"
-label_settings = SubResource("LabelSettings_1")
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="Veil" type="ColorRect" parent="."]
 anchor_right = 1.0
@@ -30,3 +18,12 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0)
+
+[node name="Trace" type="ColorRect" parent="."]
+visible = false
+material = SubResource("ShaderMaterial_trace")
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

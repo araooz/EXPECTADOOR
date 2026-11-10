@@ -5,6 +5,8 @@ extends SceneTree
 ## Uso (desde la carpeta del proyecto):
 ##   godot --path . --script res://tests/autotest.gd -- --shots=/ruta/capturas
 ##   godot --headless --path . --script res://tests/autotest.gd   (sin capturas)
+## Con -- --solo-final se adelanta la canción hasta 4 s antes del cruce (la obra
+## la sigue como reloj) para comprobar solo el cruce y lo que viene después (~35 s).
 
 const MAIN_SCENE := "res://scenes/main.tscn"
 
@@ -16,18 +18,23 @@ var _door: DoorController
 var _audio: AudioController
 var _hud: Hud
 var _absence_time: float = -1.0
-var _song_time_at_cut: float = -1.0
+var _song_time_at_crossing: float = -1.0
 var _music_finished: bool = false
 ## Reloj de pared al cargar la escena. Se usa el reloj del sistema y no la suma
 ## de los delta: si la ventana se ralentiza (p. ej. oculta), el delta de Godot
 ## se limita y ese reloj se atrasa, mientras que la música sigue en tiempo real.
 var _start_time: float = 0.0
+var _final_only: bool = false
+## Reloj de pared en el instante del cruce.
+var _crossing_wall: float = -1.0
 
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			_shots_dir = arg.trim_prefix("--shots=")
+		elif arg == "--solo-final":
+			_final_only = true
 	_run.call_deferred()
 
 
@@ -46,8 +53,9 @@ func _run() -> void:
 	_hud = _main.get_node("Hud")
 	_main.phase_changed.connect(func(p: ExperienceController.Phase) -> void:
 		if p == ExperienceController.Phase.ABSENCE:
-			_absence_time = _now() - _start_time
-			_song_time_at_cut = _audio.get_song_time())
+			_crossing_wall = _now()
+			_absence_time = _crossing_wall - _start_time
+			_song_time_at_crossing = _audio.get_song_time())
 	_audio.music_finished.connect(func() -> void: _music_finished = true)
 
 	print("== Configuración")
@@ -65,6 +73,16 @@ func _run() -> void:
 	_check(_player.find_children("*", "CollisionObject3D", true, false).is_empty() and not _player.is_class("PhysicsBody3D"),
 			"el espectador no es un cuerpo físico")
 	_check(_only_light_is_door(), "la única fuente de luz es la puerta")
+
+	if _final_only:
+		print("== (solo final) la canción se adelanta a 4 s del cruce")
+		await _wait(1.0)
+		_audio._music.play(_audio.crossing_time - 4.0)
+		_audio._intro_gain = 1.0
+		await _check_crossing()
+		await _check_aftermath()
+		_finish()
+		return
 
 	print("== Estado 0: oscuridad y silencio")
 	await _wait(2.0)
@@ -157,35 +175,103 @@ func _run() -> void:
 	_check(glare > 0.05 and glare < 0.95, "el resplandor crece ante la puerta (%.2f)" % glare)
 	await _shot("03_umbral")
 
-	print("== Estado 4: el cruce y el silencio (1:48)")
-	while _main.phase != ExperienceController.Phase.ABSENCE and _now() - _start_time < 115.0:
-		await _wait(0.01)
-	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse")
+	await _check_crossing()
 	_check(absf(_main.elapsed - 108.0) < 0.05, "el cruce ocurre a 1:48,0 en la línea de tiempo (%.3f s)" % _main.elapsed)
 	_check(absf(_absence_time - 108.0) < clock_tolerance,
 			"y a %.2f s de reloj real desde el inicio" % _absence_time)
-	_check(absf(_song_time_at_cut - _audio.cut_time) < 0.05,
-			"la canción se corta en %.2f s (1:45,5)" % _song_time_at_cut)
+	await _check_aftermath()
+	_finish()
+
+
+func _check_crossing() -> void:
+	print("== Estado 4: el cruce")
+	var deadline := _now() + 115.0
+	while _main.phase != ExperienceController.Phase.ABSENCE and _now() < deadline:
+		await _wait(0.01)
+	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse")
+	_check(absf(_song_time_at_crossing - _audio.crossing_time) < 0.05,
+			"el cruce coincide con el minuto 1:45,5 de la canción (%.2f s)" % _song_time_at_crossing)
 	_check(_main.distance_to_door() < 0.05, "en el plano de la puerta (%.3f m)" % _main.distance_to_door())
 	_check(_door.is_extinguished, "la luz de la puerta se extingue al cruzar")
-	await _wait(0.1)
-	_check(_music_finished and not _audio.is_music_playing(), "silencio total inmediato")
-	await _wait(0.5)
+
+
+## Lo que ocurre tras el cruce: la canción no se corta, se aleja hasta ser el
+## eco ausente; a la vez aparece la huella, que sigue a la mirada. Ambos se
+## sostienen y se desvanecen juntos; al final, blanco y silencio.
+func _check_aftermath() -> void:
+	var final_position := _player.global_position
+	var t := _main.aftermath_transition
+	var h := _main.aftermath_hold
+	var f := _main.aftermath_fade
+
+	print("== La transición (%.0f s)" % t)
+	await _wait_after_crossing(0.5)
 	var veil := _hud.get_veil_color()
 	_check(veil.a > 0.99 and veil.v > 0.99, "todo queda blanco al cruzar")
+	_check(_audio.is_music_playing(), "la canción no se corta")
+	var song_now := _audio.get_song_time()
+	_check(absf(song_now - (_audio.crossing_time + _now() - _crossing_wall)) < 0.15,
+			"sigue sin saltos desde el punto del cruce (%.2f s)" % song_now)
+	_check(_hud.get_trace_darkness() > 0.0, "la huella empieza a aparecer de inmediato (%.4f)" % _hud.get_trace_darkness())
+	await _wait_after_crossing(t * 0.5)
+	var mix := _audio.get_echo_mix()
+	var darkness_ratio := _hud.get_trace_darkness() / _hud.trace_peak_darkness
+	_check(mix > 0.3 and mix < 0.7, "a mitad de la transición, la canción va alejándose (mezcla %.2f)" % mix)
+	_check(absf(darkness_ratio - mix) < 0.1,
+			"huella y eco avanzan con la misma curva (huella %.2f, eco %.2f)" % [darkness_ratio, mix])
+	var cutoff := _audio.get_lowpass_cutoff_hz()
+	_check(cutoff > _audio.echo_lowpass_hz and cutoff < 19000.0, "pierde agudos de forma gradual (%.0f Hz)" % cutoff)
 
-	print("== El blanco y el silencio persisten")
-	var final_position := _player.global_position
-	_player.set_look_target(120, -30)
-	await _wait(3.0)
-	await _shot("04_blanco")
+	print("== El eco ausente y la huella")
+	await _wait_after_crossing(t + 1.0)
+	_check(_audio.get_echo_mix() > 0.999, "transición completa")
+	_check(absf(_audio.get_music_volume_db() - _audio.echo_volume_db) < 0.5,
+			"el eco suena lejano (%.1f dB)" % _audio.get_music_volume_db())
+	_check(absf(_audio.get_lowpass_cutoff_hz() - _audio.echo_lowpass_hz) < 5.0,
+			"apagado, sin agudos (%.0f Hz)" % _audio.get_lowpass_cutoff_hz())
+	_check(absf(_audio.get_reverb_wet() - _audio.echo_reverb_wet) < 0.01,
+			"con reverberación, como desde otra habitación (%.2f)" % _audio.get_reverb_wet())
+	var darkness := _hud.get_trace_darkness()
+	_check(absf(darkness - _hud.trace_peak_darkness) < 0.002 and _hud.get_trace_shape() > 0.99,
+			"la huella tiene forma de puerta (oscuridad %.3f)" % darkness)
+	await _shot("05_huella")
+	if _can_capture():
+		var center := _brightness_at(Vector2(0.5, 0.5))
+		var corner := _brightness_at(Vector2(0.05, 0.05))
+		_check(center > 0.94 and center < 0.985 and corner > 0.99,
+				"la huella es apenas más oscura que el blanco (centro %.3f, esquina %.3f)" % [center, corner])
+	_player.set_look_target(150, -40)
+	await _wait(1.0)
+	if _can_capture():
+		var center_turned := _brightness_at(Vector2(0.5, 0.5))
+		_check(center_turned < 0.985, "al girar, la huella sigue en el centro de la mirada (%.3f)" % center_turned)
+	else:
+		_check(_hud.get_trace_darkness() > 0.0, "al girar, la huella sigue ahí")
+
+	print("== El desvanecimiento (%.0f s)" % f)
+	await _wait_after_crossing(t + h + f * 0.5)
+	var shape := _hud.get_trace_shape()
+	_check(shape > 0.05 and shape < 0.9 and _hud.get_trace_darkness() > 0.0,
+			"la huella pierde la forma de puerta (forma %.2f)" % shape)
+	_check(_audio.is_music_playing() and _audio.get_music_volume_db() < _audio.echo_volume_db - 1.0,
+			"el eco se va apagando (%.1f dB)" % _audio.get_music_volume_db())
+	await _wait_after_crossing(t + h + f + 0.5)
+	_check(_hud.is_trace_finished and _hud.get_trace_darkness() == 0.0, "la huella desaparece")
+	_check(_music_finished and not _audio.is_music_playing(), "el eco termina a la vez: silencio")
+
+	print("== Después, nada")
+	await _wait(2.0)
+	await _shot("06_final")
 	if _can_capture():
 		_check(_min_brightness() > 0.99, "la imagen es blanco puro (mín %.3f)" % _min_brightness())
 	veil = _hud.get_veil_color()
 	_check(veil.a > 0.99 and veil.v > 0.99, "el blanco no se retira")
-	_check(not _audio.is_music_playing(), "el sonido no se reanuda")
+	_check(_hud.get_trace_darkness() == 0.0, "la huella no vuelve")
+	_check(not _audio.is_music_playing(), "el silencio es definitivo")
 	_check(_player.global_position.is_equal_approx(final_position), "el espectador queda inmóvil")
 
+
+func _finish() -> void:
 	print("")
 	if _failures.is_empty():
 		print("RESULTADO: todas las comprobaciones superadas")
@@ -194,6 +280,17 @@ func _run() -> void:
 		for f in _failures:
 			print("  - ", f)
 	quit(0 if _failures.is_empty() else 1)
+
+
+func _wait_after_crossing(seconds: float) -> void:
+	var remaining := _crossing_wall + seconds - _now()
+	if remaining > 0.0:
+		await _wait(remaining)
+
+
+func _brightness_at(relative: Vector2) -> float:
+	var img := root.get_texture().get_image()
+	return img.get_pixelv(Vector2i(relative * Vector2(img.get_size() - Vector2i.ONE))).v
 
 
 func _check(ok: bool, label: String) -> void:

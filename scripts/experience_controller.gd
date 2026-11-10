@@ -2,17 +2,20 @@ class_name ExperienceController
 extends Node3D
 ## Coordina las fases de la obra. El espectador no se desplaza por sí mismo: es
 ## llevado por el pasillo a un ritmo fijo, de modo que el recorrido dura siempre
-## lo mismo y cruza la puerta exactamente cuando la música se corta.
+## lo mismo y cruza la puerta exactamente en el mismo punto de la canción.
 ##
 ##   DARKNESS   Negro total y silencio ([member silence_duration]).
 ##   PROMISE    Aparece un punto de luz a lo lejos; comienza la música, muy tenue.
 ##   APPROACH   El espectador avanza; la música crece y el punto toma forma de puerta.
 ##   THRESHOLD  Ante el vano, la luz empieza a llenar la mirada.
-##   ABSENCE    Cruza: todo queda blanco y la música se corta a silencio total.
+##   ABSENCE    Cruza: todo queda blanco. La canción se aleja hasta volverse el
+##              eco ausente y, a la vez y con la misma curva, aparece en el
+##              blanco la huella de la puerta. Ambos se sostienen y se
+##              desvanecen juntos. Luego, blanco y silencio para siempre.
 ##
 ## Línea de tiempo (valores por defecto): 0:00–0:02,5 silencio; 0:02,5 entra la
-## canción desde su 0:00; 1:48,0 cruce y corte (canción en 1:45,5).
-## La duración total es [member silence_duration] + [member AudioController.cut_time].
+## canción desde su 0:00; 1:48,0 cruce (canción en 1:45,5); 2:13,0 silencio final.
+## La duración hasta el cruce es [member silence_duration] + [member AudioController.crossing_time].
 
 enum Phase { DARKNESS, PROMISE, APPROACH, THRESHOLD, ABSENCE }
 
@@ -30,6 +33,14 @@ signal phase_changed(phase: Phase)
 @export var arrival_distance: float = 1.5
 ## Velocidad con la que luz y sonido siguen a la posición (más bajo = más lento).
 @export var anticipation_response: float = 1.5
+
+@export_group("Después del cruce")
+## Transición de la canción al eco ausente; es también la aparición de la huella.
+@export var aftermath_transition: float = 5.0
+## Tiempo que eco y huella se sostienen.
+@export var aftermath_hold: float = 12.0
+## Desvanecimiento final del eco y disolución de la huella.
+@export var aftermath_fade: float = 8.0
 
 @export_group("Forma de la puerta")
 ## Distancia a la puerta a partir de la cual el punto empieza a estirarse.
@@ -106,9 +117,9 @@ func _process(delta: float) -> void:
 	_hud.set_glare(glare * glare * glare * glare_max_before_crossing)
 
 
-## Duración total de la obra hasta el cruce: silencio inicial + canción hasta el corte.
+## Duración de la obra hasta el cruce: silencio inicial + canción hasta el cruce.
 func get_total_duration() -> float:
-	return silence_duration + _audio.cut_time
+	return silence_duration + _audio.crossing_time
 
 
 ## Duración del avance: desde que aparece la luz hasta el cruce.
@@ -130,7 +141,7 @@ func distance_to_door() -> float:
 	return maxf((_door.global_position - _player.global_position).dot(path_direction), 0.0)
 
 
-## Mientras suena la canción, su posición es el reloj: así el corte de la música
+## Mientras suena la canción, su posición es el reloj: así el punto de la canción
 ## y el cruce de la puerta coinciden aunque haya tirones de imagen.
 func _advance_clock(delta: float) -> void:
 	if _audio.is_music_playing():
@@ -143,14 +154,14 @@ func _reveal() -> void:
 	_set_phase(Phase.PROMISE)
 	_door.reveal()
 	_audio.start()
-	_hud.show_intro_hint()
 
 
 func _cross() -> void:
 	_set_phase(Phase.ABSENCE)
 	_hud.play_crossing()
+	_hud.play_trace(aftermath_transition, aftermath_hold, aftermath_fade)
 	_door.extinguish()
-	_audio.cut()
+	_audio.play_echo(aftermath_transition, aftermath_hold, aftermath_fade)
 
 
 func _set_phase(new_phase: Phase) -> void:
