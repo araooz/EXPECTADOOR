@@ -1,6 +1,27 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/player_controller.gd" id="1_player_controller"]
+[ext_resource type="Script" path="res://scripts/xr_overlay.gd" id="2_xr_overlay"]
+[ext_resource type="Shader" path="res://assets/materials/xr_veil.gdshader" id="3_xr_veil"]
+[ext_resource type="Shader" path="res://assets/materials/afterimage_xr.gdshader" id="4_afterimage_xr"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_veil"]
+size = Vector2(4.0, 4.0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_veil"]
+render_priority = 100
+shader = ExtResource("3_xr_veil")
+shader_parameter/alpha = 0.0
+shader_parameter/white_level = 6.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_trace"]
+size = Vector2(3.0, 3.0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_trace"]
+render_priority = 101
+shader = ExtResource("4_afterimage_xr")
+shader_parameter/darkness = 0.0
+shader_parameter/shape = 1.0
 
 [node name="Player" type="Node3D" groups=["player"]]
 script = ExtResource("1_player_controller")
@@ -13,3 +34,29 @@ current = true
 fov = 68.0
 near = 0.05
 far = 120.0
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+position = Vector3(0.0, 1.62, 0.0)
+current = false
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+near = 0.05
+far = 120.0
+
+[node name="XrOverlay" type="Node3D" parent="XROrigin3D/XRCamera3D"]
+visible = false
+script = ExtResource("2_xr_overlay")
+
+[node name="Veil" type="MeshInstance3D" parent="XROrigin3D/XRCamera3D/XrOverlay"]
+position = Vector3(0.0, 0.0, -0.25)
+visible = false
+cast_shadow = 0
+mesh = SubResource("QuadMesh_veil")
+surface_material_override/0 = SubResource("ShaderMaterial_veil")
+
+[node name="Trace" type="MeshInstance3D" parent="XROrigin3D/XRCamera3D/XrOverlay"]
+position = Vector3(0.0, 0.0, -3.0)
+visible = false
+cast_shadow = 0
+mesh = SubResource("QuadMesh_trace")
+surface_material_override/0 = SubResource("ShaderMaterial_trace")

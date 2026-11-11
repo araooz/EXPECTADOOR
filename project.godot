@@ -68,3 +68,10 @@ toggle_mouse_capture={
 
 rendering_device/driver.windows="d3d12"
 anti_aliasing/quality/msaa_3d=2
+
+[xr]
+
+openxr/enabled=true
+openxr/reference_space=0
+openxr/startup_alert=false
+shaders/enabled=true

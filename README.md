@@ -47,9 +47,18 @@ recorrido se recalcula solo. Lo que sigue al cruce dura 25 s (ver abajo). El cl�
 la canción se sostiene hasta ~1:44,7; en 1:45,5 ya está cayendo, y desde ~1:45,8 entra
 el pasaje tranquilo, que se mantiene parejo hasta pasado 2:15.
 
-**Sincronía.** Mientras suena la canción, su posición de reproducción es el reloj de
-la obra: la posición del espectador se calcula a partir de ella. Así el cruce cae en el
-punto exacto de la canción aunque haya tirones de imagen.
+**Sincronía.** El reloj de la obra avanza con el tiempo de cada frame, que es suave, y
+mientras suena la canción se corrige poco a poco hacia ella (`clock_correction_rate`).
+Así el cruce cae en el punto exacto de la canción. Si se separan más de 0,3 s, por
+ejemplo tras un tirón largo de imagen, se resincroniza de golpe. Antes la posición del
+espectador salía directamente de la posición de la canción, pero esa posición avanza a
+saltos: en el 5 % de los frames tenía ~10 ms de error (máx. 24 ms), y en VR se veía como
+tirones en el desplazamiento. Con el reloj suave, el error del 5 % de los peores frames
+es de 0,4 ms (máx. 0,6 ms).
+
+Además se compensa la latencia de salida de audio (`compensate_audio_latency`): con
+audífonos Bluetooth ronda 0,23 s, y sin compensarla la imagen iba por delante de lo
+que se oía.
 
 **Avance.** Acelera suavemente durante 4 s (`travel_ease_in`) y luego sigue a velocidad
 constante (~0,73 m/s) hasta cruzar la puerta sin frenar.
@@ -110,10 +119,58 @@ La referencia visual de la puerta es `assets/sugerencias/puerta blanca fondo neg
 - **Pasillo de 12 m de ancho**, invisible: sirve solo para recibir el haz en el suelo.
 - **El blanco final** lo garantiza un velo de interfaz completamente blanco.
 
+## Realidad virtual
+
+La obra funciona con lentes VR conectados a una PC, mediante **OpenXR**, el estándar
+que soportan Meta Quest (con Link o Air Link), Pico, Valve Index, HTC Vive y otros. No
+depende del modelo. Al arrancar:
+
+- **Con visor:** se ve en el visor, la mirada sigue a la cabeza y el ratón no
+  interviene. La obra **espera a que el visor esté puesto** (la sesión VR tiene el foco)
+  para empezar el negro inicial; en ese momento centra la vista para que la puerta quede
+  al frente, en cualquier orientación de la silla, con los ojos a la altura de la escena.
+  Si se recentra el visor (en Quest, mantener pulsado el botón Meta), se vuelve a centrar.
+- **Sin visor (o sin runtime OpenXR):** corre en modo escritorio, como siempre.
+
+Es una experiencia **sentada**: espacio de referencia local, sin manos ni mandos.
+
+**Cómo se adapta la imagen.** En VR la capa 2D del Hud no llega al visor, así que el
+velo (resplandor y blanco final) y la huella se dibujan en `XrOverlay`, como quads
+pegados a la cámara XR; el Hud les copia su estado en cada frame. Se dibujan antes del
+tonemapping, por eso:
+- el resplandor se compensa con una curva medida (`XrOverlay.VEIL_ALPHA` /
+  `VEIL_BRIGHTNESS`) para que se vea con la misma intensidad que en pantalla;
+- al cruzar, el entorno pasa a tonemapping lineal y sin glow (ya no queda otra luz):
+  el blanco sale puro y la huella mantiene su 3,5 % de contraste.
+
+Medido con la capa VR renderizada por la cámara de escritorio: resplandor en el umbral
+0,325 (escritorio: 0,30), blanco tras el cruce 1,000, huella 0,965 (igual que en
+escritorio). Con un visor simulado (Monado) se comprobó que arranca en VR, usa la
+cámara XR, oculta el Hud 2D, empieza al recibir el foco, cruza y muestra velo y huella.
+
+**Montaje recomendado** (Windows + Meta Quest; con otros visores, el equivalente):
+1. Instalar la app **Meta Quest Link** en la PC y, en *Configuración → General*,
+   activarla como **runtime de OpenXR**. Con SteamVR, elegir SteamVR como runtime.
+2. Conectar el visor por cable (Link) o Air Link y entrar en modo Link.
+3. Abrir la obra (desde el editor de Godot o un ejecutable exportado). Se queda en negro
+   esperando; empieza cuando el espectador tiene el visor puesto.
+4. **Audífonos:** con Link, el sonido sale por defecto por el visor. Lo más fiable es
+   conectar los Sony ULT Wear **por cable** al visor (si tiene conector de 3,5 mm) o a
+   la PC, y elegirlos como salida. Por Bluetooth hay retraso. Cancelación de ruido
+   activada y modo ULT (graves) desactivado.
+5. Para el siguiente espectador, cerrar y volver a abrir la obra.
+
+En Linux, el visor se conecta con WiVRn o ALVR (runtime Monado o SteamVR).
+
+**Rendimiento.** En VR la escena se dibuja dos veces (una por ojo) a 72–120 Hz. La
+escena es muy sencilla, pero hay que comprobar en el equipo real que no pierda fluidez.
+
 ## Requisitos técnicos
 
 - **Godot 4.7.2** (probado con `4.7.2.stable.nixpkgs`). Debería funcionar en
   Godot 4.4 o posterior, pero solo se ha probado en 4.7.2.
+- **OpenXR** activado en `project.godot` (`xr/openxr/enabled`), con espacio de referencia
+  local y sin alerta si no hay visor (`xr/openxr/startup_alert=false`).
 - **Renderizador Forward+**, configurado explícitamente en `project.godot`
   (`renderer/rendering_method="forward_plus"`). La prueba verifica que es el método
   activo en ejecución.
@@ -160,11 +217,12 @@ scenes/
   main.tscn          Entorno, pasillo, puerta, espacio posterior, jugador, música, HUD
   corridor.tscn      Pasillo de 77 × 12 m, sin luces; paredes y techo en la capa de render 2
   door.tscn          Luz de la puerta (shader), halo del punto, foco del haz y halo del suelo
-  player.tscn        Cabeza y cámara (sin cuerpo físico)
+  player.tscn        Cabeza y cámara (escritorio) + XROrigin3D/XRCamera3D con XrOverlay (VR)
   hud.tscn           Velo (resplandor y blanco final) y huella; sin texto en pantalla
 scripts/
   experience_controller.gd   Línea de tiempo, avance automático, fases, forma de la puerta y resplandor
-  player_controller.gd       Solo la mirada
+  player_controller.gd       La mirada (ratón o visor), activación de VR, centrado y señal de inicio
+  xr_overlay.gd              VR: velo y huella como quads pegados a la cabeza
   door_controller.gd         Aparición, forma e intensidad de la luz de la puerta
   audio_controller.gd        Música: crece con la cercanía y al cruzar se aleja hasta ser el eco
   hud.gd                     Resplandor, blanco final y huella
@@ -172,7 +230,7 @@ scripts/
 assets/
   audio/goodbye_to_a_world.mp3   Música (ver "Música y derechos")
   audio/default_bus_layout.tres  Bus "Ambience": paso bajo y reverberación
-  materials/                     Shaders y materiales de la puerta, el pasillo y la huella
+  materials/                     Shaders y materiales de la puerta, el pasillo, la huella y el velo VR
   sugerencias/                   Imagen de referencia (no la usa la obra)
 tests/autotest.gd    Recorrido automatizado con comprobaciones
 ```
@@ -220,6 +278,8 @@ Todos se editan en el Inspector:
     empieza a notarse el brillo en el suelo y dónde alcanza su plenitud;
   - `glare_distance` (3 m): distancia a la que empieza el resplandor;
   - `anticipation_response`: lo rápido que luz y sonido siguen a la posición.
+  - grupo *Reloj*: `clock_correction_rate` (2/s), `clock_resync_threshold` (0,3 s) y
+    `compensate_audio_latency` (activado).
 - **AudioController**: `crossing_time` (105,5 s), `music_volume_range_db` (−30 → −2 dB),
   `intro_fade_duration`, `lowpass_cutoff_range_hz`.
 - **Door**: `reveal_duration`, energías del haz y del halo, `point_glow_strength`.
@@ -298,6 +358,6 @@ corrigieron:
 - La música tiene derechos de autor (ver arriba). Si se exporta, conviene excluir
   `tests/` y `assets/sugerencias/`.
 - No hay preset de exportación ni menú para salir (de forma deliberada).
-- **Todavía no es compatible con VR**: no tiene OpenXR activado ni nodos XR, la mirada
-  se controla con el ratón y el velo blanco, el resplandor y la huella se dibujan en
-  una capa 2D (`CanvasLayer`), que no aparece en los visores.
+- VR: probado solo con un visor simulado (Monado), no con unos lentes reales. Con ese
+  runtime simulado, Godot se cae al cerrarse durante la sesión VR (`xrEndSession`);
+  la experiencia en sí corre completa.

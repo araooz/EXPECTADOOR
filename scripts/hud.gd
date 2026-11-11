@@ -15,6 +15,7 @@ extends CanvasLayer
 var is_trace_finished: bool = false
 
 var _crossed: bool = false
+var _xr_overlay: XrOverlay
 
 @onready var _veil: ColorRect = $Veil
 @onready var _trace: ColorRect = $Trace
@@ -23,6 +24,18 @@ var _crossed: bool = false
 
 func _ready() -> void:
 	_veil.color = Color(1, 1, 1, 0)
+
+
+## En VR la capa 2D no llega al visor: el velo y la huella se copian en cada
+## frame a [param overlay], pegado a la cámara XR, y esta capa se oculta.
+func use_xr_overlay(overlay: XrOverlay) -> void:
+	_xr_overlay = overlay
+	visible = false
+
+
+func _process(_delta: float) -> void:
+	if _xr_overlay:
+		_xr_overlay.apply(_veil.color.a, _trace.visible, get_trace_darkness(), get_trace_shape())
 
 
 ## Resplandor previo al cruce (0 = nada, 1 = pantalla blanca).

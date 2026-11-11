@@ -34,6 +34,17 @@ signal phase_changed(phase: Phase)
 ## Velocidad con la que luz y sonido siguen a la posición (más bajo = más lento).
 @export var anticipation_response: float = 1.5
 
+@export_group("Reloj")
+## Rapidez con que el reloj se corrige hacia la posición de la canción (1/s).
+## Bajo = movimiento más suave; alto = sigue la canción más de cerca.
+@export var clock_correction_rate: float = 2.0
+## Si el reloj y la canción se separan más que esto (s), se resincroniza de golpe
+## (p. ej. tras un tirón largo de imagen).
+@export var clock_resync_threshold: float = 0.3
+## Compensar la latencia de salida de audio (p. ej. ~0,2 s con audífonos
+## Bluetooth), para que la imagen coincida con lo que se oye y no con lo que se mezcla.
+@export var compensate_audio_latency: bool = true
+
 @export_group("Después del cruce")
 ## Transición de la canción al eco ausente; es también la aparición de la huella.
 @export var aftermath_transition: float = 5.0
@@ -65,6 +76,8 @@ var anticipation: float = 0.0
 
 ## Segundos transcurridos desde el comienzo de la obra.
 var elapsed: float = 0.0
+## La obra empieza cuando el espectador está listo (con VR, al ponerse el visor).
+var is_started: bool = false
 
 var _start_position: Vector3
 var _path_length: float
@@ -74,6 +87,7 @@ var _travel_speed: float
 @onready var _door: DoorController = $Door
 @onready var _audio: AudioController = $AudioController
 @onready var _hud: Hud = $Hud
+@onready var _environment: Environment = $WorldEnvironment.environment
 
 
 func _ready() -> void:
@@ -83,10 +97,13 @@ func _ready() -> void:
 	# Velocidad de crucero tal que, con la aceleración inicial, el espectador
 	# alcanza el plano de la puerta justo al terminar la línea de tiempo.
 	_travel_speed = _path_length / maxf(get_travel_duration() - travel_ease_in * 0.5, 0.01)
+	if _player.is_xr:
+		_hud.use_xr_overlay(_player.get_xr_overlay())
+	_player.ready_to_start.connect(func() -> void: is_started = true, CONNECT_ONE_SHOT)
 
 
 func _process(delta: float) -> void:
-	if phase == Phase.ABSENCE:
+	if phase == Phase.ABSENCE or not is_started:
 		return
 	_advance_clock(delta)
 	if phase == Phase.DARKNESS and elapsed >= silence_duration:
@@ -141,13 +158,23 @@ func distance_to_door() -> float:
 	return maxf((_door.global_position - _player.global_position).dot(path_direction), 0.0)
 
 
-## Mientras suena la canción, su posición es el reloj: así el punto de la canción
-## y el cruce de la puerta coinciden aunque haya tirones de imagen.
+## El reloj avanza con el tiempo de cada frame (suave) y, mientras suena la
+## canción, se corrige poco a poco hacia ella: así el cruce coincide con su punto
+## exacto. La posición de la canción por sí sola avanza a saltos (el audio se
+## mezcla por bloques, hasta ~10–25 ms de error por frame), y usarla directamente
+## producía tirones en el desplazamiento, muy visibles en VR.
 func _advance_clock(delta: float) -> void:
-	if _audio.is_music_playing():
-		elapsed = silence_duration + _audio.get_song_time()
+	elapsed += delta
+	if not _audio.is_music_playing():
+		return
+	var target := silence_duration + _audio.get_song_time()
+	if compensate_audio_latency:
+		target -= AudioServer.get_output_latency()
+	var error := target - elapsed
+	if absf(error) > clock_resync_threshold:
+		elapsed = target
 	else:
-		elapsed += delta
+		elapsed += error * (1.0 - exp(-clock_correction_rate * delta))
 
 
 func _reveal() -> void:
@@ -158,6 +185,12 @@ func _reveal() -> void:
 
 func _cross() -> void:
 	_set_phase(Phase.ABSENCE)
+	if _player.is_xr:
+		# En VR el blanco y la huella se dibujan en la escena, antes del
+		# tonemapping; tras el cruce ya no queda otra luz, y con tonemapping
+		# lineal el blanco es puro y la huella conserva su contraste.
+		_environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+		_environment.glow_enabled = false
 	_hud.play_crossing()
 	_hud.play_trace(aftermath_transition, aftermath_hold, aftermath_fade)
 	_door.extinguish()

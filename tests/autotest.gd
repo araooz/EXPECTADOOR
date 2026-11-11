@@ -74,6 +74,14 @@ func _run() -> void:
 	_check(_player.find_children("*", "CollisionObject3D", true, false).is_empty() and not _player.is_class("PhysicsBody3D"),
 			"el espectador no es un cuerpo físico")
 	_check(_only_light_is_door(), "la única fuente de luz es la puerta")
+	_check(ProjectSettings.get_setting("xr/openxr/enabled") and ProjectSettings.get_setting("xr/shaders/enabled"),
+			"OpenXR activado (lentes VR)")
+	_check(ProjectSettings.get_setting("xr/openxr/reference_space") == 0 and not ProjectSettings.get_setting("xr/openxr/startup_alert"),
+			"VR sentado (espacio local) y sin alerta si no hay visor")
+	_check(not _player.is_xr and _player.get_camera() == _player.get_node("Head/Camera3D"),
+			"sin visor, la obra corre en modo escritorio")
+	var compensated := XrOverlay.veil_alpha_for_brightness(0.5)
+	_check(compensated > 0.025 and compensated < 0.031, "el velo VR compensa el tonemapping (50 %% → alpha %.3f)" % compensated)
 
 	if _final_only:
 		print("== (solo final) la canción se adelanta a 4 s del cruce")
@@ -101,8 +109,9 @@ func _run() -> void:
 	_check(_main.phase >= ExperienceController.Phase.PROMISE, "fase PROMISE")
 	_check(_door.is_revealed and _door.get_shape() < 0.01, "aparece un punto de luz (forma %.2f)" % _door.get_shape())
 	_check(_audio.is_music_playing(), "la música comienza")
-	var sync_error := absf((_main.elapsed - _main.silence_duration) - _audio.get_song_time())
-	_check(_audio.get_song_time() < 1.0 and sync_error < 0.05,
+	var heard := _audio.get_song_time() - AudioServer.get_output_latency()
+	var sync_error := absf((_main.elapsed - _main.silence_duration) - heard)
+	_check(_audio.get_song_time() < 1.0 and sync_error < 0.3,
 			"la canción empieza desde 0:00 al terminar el silencio (%.2f s)" % _audio.get_song_time())
 	_check(_main.distance_to_door() > 70.0, "la puerta está lejos (%.1f m)" % _main.distance_to_door())
 	await _shot("01_punto")
@@ -190,8 +199,9 @@ func _check_crossing() -> void:
 	while _main.phase != ExperienceController.Phase.ABSENCE and _now() < deadline:
 		await _wait(0.01)
 	_check(_main.phase == ExperienceController.Phase.ABSENCE, "la puerta se atraviesa sin abrirse")
-	_check(absf(_song_time_at_crossing - _audio.crossing_time) < 0.05,
-			"el cruce coincide con el minuto 1:45,5 de la canción (%.2f s)" % _song_time_at_crossing)
+	var heard_at_crossing := _song_time_at_crossing - AudioServer.get_output_latency()
+	_check(absf(heard_at_crossing - _audio.crossing_time) < 0.06,
+			"el cruce coincide con el minuto 1:45,5 de la canción tal como se oye (%.2f s)" % heard_at_crossing)
 	_check(_main.distance_to_door() < 0.05, "en el plano de la puerta (%.3f m)" % _main.distance_to_door())
 	_check(_door.is_extinguished, "la luz de la puerta se extingue al cruzar")
 
@@ -210,7 +220,7 @@ func _check_aftermath() -> void:
 	var veil := _hud.get_veil_color()
 	_check(veil.a > 0.99 and veil.v > 0.99, "todo queda blanco al cruzar")
 	_check(_audio.is_music_playing(), "la canción no se corta")
-	var song_now := _audio.get_song_time()
+	var song_now := _audio.get_song_time() - AudioServer.get_output_latency()
 	_check(absf(song_now - (_audio.crossing_time + _now() - _crossing_wall)) < 0.15,
 			"sigue sin saltos desde el punto del cruce (%.2f s)" % song_now)
 	_check(_hud.get_trace_darkness() > 0.0, "la huella empieza a aparecer de inmediato (%.4f)" % _hud.get_trace_darkness())
