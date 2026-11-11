@@ -148,22 +148,31 @@ Medido con la capa VR renderizada por la cámara de escritorio: resplandor en el
 escritorio). Con un visor simulado (Monado) se comprobó que arranca en VR, usa la
 cámara XR, oculta el Hud 2D, empieza al recibir el foco, cruza y muestra velo y huella.
 
-**Montaje recomendado** (Windows + Meta Quest; con otros visores, el equivalente):
+**Probado con Meta Quest 3S.** La obra funciona en el visor real. En esa prueba el visor
+se conectó por WiFi a través de una red compartida, y la imagen se vio con mala calidad
+y poco fluida: la red no daba el ancho de banda ni la latencia que necesita el streaming
+de VR. Para la demo, **conectar por cable** (ver abajo).
+
+**Montaje recomendado** (Windows + Meta Quest 3S; con otros visores, el equivalente):
 1. Instalar la app **Meta Quest Link** en la PC y, en *Configuración → General*,
    activarla como **runtime de OpenXR**. Con SteamVR, elegir SteamVR como runtime.
-2. Conectar el visor por cable (Link) o Air Link y entrar en modo Link.
+2. Conectar el visor **por cable USB-C** (USB 3, idealmente de 3 m o más) y entrar en
+   modo Link. Evitar el WiFi: con una red compartida se ve mal y a tirones. Si no queda
+   otra que Air Link, usar un router de 5 GHz dedicado, cerca del visor, con la PC
+   conectada a él por cable de red.
 3. Abrir la obra (desde el editor de Godot o un ejecutable exportado). Se queda en negro
    esperando; empieza cuando el espectador tiene el visor puesto.
-4. **Audífonos:** con Link, el sonido sale por defecto por el visor. Lo más fiable es
-   conectar los Sony ULT Wear **por cable** al visor (si tiene conector de 3,5 mm) o a
-   la PC, y elegirlos como salida. Por Bluetooth hay retraso. Cancelación de ruido
+4. **Audífonos:** con Link, el sonido sale por defecto por el visor. El Quest 3S no
+   tiene conector de 3,5 mm, así que lo más fiable es conectar los Sony ULT Wear
+   **por cable a la PC** y elegirlos como salida. Por Bluetooth hay retraso. Cancelación de ruido
    activada y modo ULT (graves) desactivado.
 5. Para el siguiente espectador, cerrar y volver a abrir la obra.
 
 En Linux, el visor se conecta con WiVRn o ALVR (runtime Monado o SteamVR).
 
 **Rendimiento.** En VR la escena se dibuja dos veces (una por ojo) a 72–120 Hz. La
-escena es muy sencilla, pero hay que comprobar en el equipo real que no pierda fluidez.
+escena es muy sencilla. La falta de fluidez vista con el Quest 3S se debió a la conexión
+WiFi compartida, no al render; falta confirmar que por cable va fluido.
 
 ## Requisitos técnicos
 
@@ -347,6 +356,7 @@ corrigieron:
 - la suite completa (recorrido + después) de una sola vez: se verificó el recorrido y,
   por separado, el después;
 - el manejo con ratón físico por una persona;
+- la VR con el Quest 3S conectado por cable (solo se probó por WiFi compartido);
 - la respuesta emocional, que requiere pruebas con público.
 
 ## Limitaciones conocidas
@@ -358,6 +368,7 @@ corrigieron:
 - La música tiene derechos de autor (ver arriba). Si se exporta, conviene excluir
   `tests/` y `assets/sugerencias/`.
 - No hay preset de exportación ni menú para salir (de forma deliberada).
-- VR: probado solo con un visor simulado (Monado), no con unos lentes reales. Con ese
-  runtime simulado, Godot se cae al cerrarse durante la sesión VR (`xrEndSession`);
-  la experiencia en sí corre completa.
+- VR: probado con Meta Quest 3S solo por WiFi en una red compartida, donde se vio con
+  mala calidad y a tirones; falta probarlo por cable. Con el runtime simulado (Monado),
+  Godot se cae al cerrarse durante la sesión VR (`xrEndSession`); la experiencia en sí
+  corre completa.
